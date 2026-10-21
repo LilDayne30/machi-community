@@ -29,10 +29,9 @@ npm run publish:github
 
 ```sh
 npx wrangler login
-npx wrangler d1 create machi-community --location apac
 ```
 
-返されたdatabase_idを `wrangler.jsonc` に設定します。Cloudflareアカウントのworkers.devサブドメインを確認し、`vars.APP_ORIGIN` を `https://machi-community.<subdomain>.workers.dev` にします。カスタムドメインの場合はそのオリジンを設定してください。末尾のスラッシュは不要です。
+このリポジトリの公開先アカウント・D1 ID・workers.devオリジンは設定済みです。既存D1をそのまま使用してください。別環境へ新規導入する場合に限り、`npx wrangler d1 create machi-community --location apac` でDBを作成し、返されたdatabase_idと配信先オリジンを `wrangler.jsonc` に設定します。カスタムドメインの場合はそのHTTPSオリジンを設定してください。末尾のスラッシュは不要です。
 
 `vars.APP_ENV=production`、`vars.DEMO_MODE=false` を維持します。ローカルの `.dev.vars` は公開されません。`ADMIN_EMAIL` をsecretとして `danaoki30@gmail.com` に設定します。
 
@@ -41,7 +40,7 @@ npx wrangler secret put ADMIN_EMAIL
 npm run db:remote
 ```
 
-本番マイグレーションにはテスト会員・固定セッション・架空の店舗は含まれません。
+`db:remote` は適用済み履歴を確認し、未適用分だけを実行します。初期スキーマはすでに適用・記録済みなので、SQLを手動で再実行しないでください。本番マイグレーションにはテスト会員・固定セッション・架空の店舗は含まれません。
 
 ## 3. Google認証
 
