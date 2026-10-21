@@ -317,3 +317,236 @@ test("ログアウト後はセッションを再利用できない", async ({ re
   ).json();
   expect(b.user).toBeNull();
 });
+
+test("個人の一覧は受付中だけを表示しメールと認証情報を公開しない", async ({
+  request,
+}) => {
+  const b = await (
+    await request.get("/api/bootstrap", { headers: auth("da") })
+  ).json();
+  expect(b.people.some((p: any) => p.id === "e2e-db")).toBe(true);
+  for (const id of ["e2e-da", "e2e-closed", "e2e-pa"])
+    expect(b.people.some((p: any) => p.id === id)).toBe(false);
+  expect(JSON.stringify(b.people)).not.toContain("@example.test");
+  expect(JSON.stringify(b.people)).not.toContain("google_sub");
+  expect(JSON.stringify(b.people)).not.toContain("acceptsMessages");
+});
+test("個人会話は両方向から同じ1部屋になり参加者は必ず2人", async ({
+  request,
+}) => {
+  const first = await request.post("/api/conversations", {
+    headers: auth("da"),
+    data: { personId: "e2e-db" },
+  });
+  expect(first.status()).toBe(201);
+  const { id } = await first.json();
+  const reverse = await request.post("/api/conversations", {
+    headers: auth("db"),
+    data: { personId: "e2e-da" },
+  });
+  expect((await reverse.json()).id).toBe(id);
+  for (const [user, peer] of [
+    ["da", "個人会話B"],
+    ["db", "個人会話A"],
+  ]) {
+    const b = await (
+      await request.get("/api/bootstrap", { headers: auth(user) })
+    ).json();
+    const room = b.rooms.find((r: any) => r.id === id);
+    expect(room).toMatchObject({ kind: "direct", members: 2, title: peer });
+    expect(b.rooms.filter((r: any) => r.id === id)).toHaveLength(1);
+  }
+});
+test("個人会話の同時開始でも同じ部屋を返す", async ({ request }) => {
+  const responses = await Promise.all(
+    Array.from({ length: 6 }, (_, i) =>
+      request.post("/api/conversations", {
+        headers: auth(i % 2 ? "da" : "dc"),
+        data: { personId: i % 2 ? "e2e-dc" : "e2e-da" },
+      }),
+    ),
+  );
+  for (const r of responses) expect(r.ok()).toBe(true);
+  const ids = await Promise.all(
+    responses.map(async (r) => (await r.json()).id),
+  );
+  expect(new Set(ids).size).toBe(1);
+  const b = await (
+    await request.get("/api/bootstrap", { headers: auth("da") })
+  ).json();
+  expect(b.rooms.find((r: any) => r.id === ids[0]).members).toBe(2);
+});
+test("本人同士の投稿・未読・既読と第三者の非開示", async ({ request }) => {
+  const { id } = await (
+    await request.post("/api/conversations", {
+      headers: auth("da"),
+      data: { personId: "e2e-db" },
+    })
+  ).json();
+  const sent = await request.post(`/api/rooms/${id}/messages`, {
+    headers: auth("da"),
+    data: { body: "この二人だけの京都の話です" },
+  });
+  expect(sent.status()).toBe(201);
+  const messageId = (await sent.json()).id;
+  const peer = await (
+    await request.get("/api/bootstrap", { headers: auth("db") })
+  ).json();
+  expect(peer.rooms.find((r: any) => r.id === id).unread).toBeGreaterThan(0);
+  expect(peer.rooms.find((r: any) => r.id === id).messages.at(-1).body).toBe(
+    "この二人だけの京都の話です",
+  );
+  expect(
+    (await request.post(`/api/rooms/${id}/read`, { headers: auth("db") })).ok(),
+  ).toBe(true);
+  const read = await (
+    await request.get("/api/bootstrap", { headers: auth("db") })
+  ).json();
+  expect(read.rooms.find((r: any) => r.id === id).unread).toBe(0);
+  for (const user of ["dc", "admin", "pa"]) {
+    const outsider = await (
+      await request.get("/api/bootstrap", { headers: auth(user) })
+    ).json();
+    expect(outsider.rooms.some((r: any) => r.id === id)).toBe(false);
+    expect(JSON.stringify(outsider)).not.toContain(
+      "この二人だけの京都の話です",
+    );
+    expect(
+      (
+        await request.post(`/api/rooms/${id}/messages`, {
+          headers: auth(user),
+          data: { body: "侵入" },
+        })
+      ).status(),
+    ).toBe(403);
+    expect(
+      (
+        await request.post(`/api/rooms/${id}/read`, { headers: auth(user) })
+      ).status(),
+    ).toBe(403);
+    expect(
+      (
+        await request.post("/api/reports", {
+          headers: auth(user),
+          data: { messageId, reason: "その他" },
+        })
+      ).status(),
+    ).toBe(403);
+  }
+});
+test("未ログイン・自分自身・受付停止・事業者からの個人会話を拒否", async ({
+  request,
+}) => {
+  expect(
+    (
+      await request.post("/api/conversations", {
+        headers: origin,
+        data: { personId: "e2e-db" },
+      })
+    ).status(),
+  ).toBe(401);
+  expect(
+    (
+      await request.post("/api/conversations", {
+        headers: auth("da"),
+        data: { personId: "e2e-da" },
+      })
+    ).status(),
+  ).toBe(400);
+  for (const [user, personId] of [
+    ["da", "e2e-closed"],
+    ["da", "e2e-pa"],
+    ["pa", "e2e-db"],
+    ["da", "not-a-user"],
+  ])
+    expect(
+      (
+        await request.post("/api/conversations", {
+          headers: auth(user),
+          data: { personId },
+        })
+      ).status(),
+    ).toBe(403);
+});
+test("1対1のブロックは両者の送信と新規開始を止める", async ({ request }) => {
+  const { id } = await (
+    await request.post("/api/conversations", {
+      headers: auth("da"),
+      data: { personId: "e2e-db" },
+    })
+  ).json();
+  expect(
+    (
+      await request.post("/api/blocks", {
+        headers: auth("da"),
+        data: { personId: "e2e-db" },
+      })
+    ).ok(),
+  ).toBe(true);
+  for (const [user, peer] of [
+    ["da", "db"],
+    ["db", "da"],
+  ]) {
+    expect(
+      (
+        await request.post(`/api/rooms/${id}/messages`, {
+          headers: auth(user),
+          data: { body: "ブロック後の送信" },
+        })
+      ).status(),
+    ).toBe(403);
+    expect(
+      (
+        await request.post("/api/conversations", {
+          headers: auth(user),
+          data: { personId: "e2e-" + peer },
+        })
+      ).status(),
+    ).toBe(403);
+    const b = await (
+      await request.get("/api/bootstrap", { headers: auth(user) })
+    ).json();
+    expect(b.rooms.find((r: any) => r.id === id).blocked).toBe(true);
+    expect(b.people.some((p: any) => p.id === "e2e-" + peer)).toBe(false);
+  }
+});
+
+test("ブロック解除は自分の設定だけを変更し、相手のブロックは解除しない", async ({
+  request,
+}) => {
+  const b = await (
+    await request.get("/api/bootstrap", { headers: auth("da") })
+  ).json();
+  const room = b.rooms.find(
+    (r: any) => r.kind === "direct" && r.peer.id === "e2e-db",
+  );
+  expect(
+    (await request.delete("/api/blocks/e2e-da", { headers: auth("db") })).ok(),
+  ).toBe(true);
+  expect(
+    (
+      await request.post(`/api/rooms/${room.id}/messages`, {
+        headers: auth("db"),
+        data: { body: "相手側からの解除では送れない" },
+      })
+    ).status(),
+  ).toBe(403);
+  expect(
+    (await request.delete("/api/blocks/e2e-db", { headers: auth("da") })).ok(),
+  ).toBe(true);
+  expect(
+    (
+      await request.post(`/api/rooms/${room.id}/messages`, {
+        headers: auth("db"),
+        data: { body: "解除後はまた話せます" },
+      })
+    ).status(),
+  ).toBe(201);
+  const refreshed = await (
+    await request.get("/api/bootstrap", { headers: auth("da") })
+  ).json();
+  expect(refreshed.rooms.find((r: any) => r.id === room.id)).toMatchObject({
+    blocked: false,
+    blockedByMe: false,
+  });
+});

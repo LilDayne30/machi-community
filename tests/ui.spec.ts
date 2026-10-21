@@ -14,17 +14,15 @@ test("ホーム・画像・レスポンシブ・主要画面の2タップ導線"
   await expect(page.locator(".region-hero img")).toBeVisible();
   await expect(page.locator(".talk-card")).toHaveCount(1);
   expect(
-    await page.evaluate(
-      () => document.documentElement.scrollWidth <= innerWidth,
-    ),
-  ).toBe(true);
+    await page.evaluate(() => document.documentElement.scrollWidth),
+  ).toBeLessThanOrEqual(page.viewportSize()!.width);
   await page.screenshot({
     path: `test-results/${info.project.name}-home.png`,
     fullPage: true,
   });
   for (const [path, title] of [
-    ["/talks", "地域トーク"],
-    ["/rooms", "マイルーム"],
+    ["/people", "話せる人"],
+    ["/rooms", "メッセージ"],
     ["/consult", "プロへの相談"],
     ["/profile", "プロフィール"],
   ]) {
@@ -34,8 +32,8 @@ test("ホーム・画像・レスポンシブ・主要画面の2タップ導線"
         name: info.project.name.startsWith("mobile")
           ? (
               {
-                地域トーク: "トーク",
-                マイルーム: "ルーム",
+                話せる人: "話せる人",
+                メッセージ: "メッセージ",
                 プロへの相談: "相談",
                 プロフィール: "マイページ",
               } as any
@@ -49,10 +47,8 @@ test("ホーム・画像・レスポンシブ・主要画面の2タップ導線"
     ).toBeVisible();
     await expect(page).toHaveURL(new RegExp(path + "$"));
     expect(
-      await page.evaluate(
-        () => document.documentElement.scrollWidth <= innerWidth,
-      ),
-    ).toBe(true);
+      await page.evaluate(() => document.documentElement.scrollWidth),
+    ).toBeLessThanOrEqual(page.viewportSize()!.width);
   }
   expect(errors).toEqual([]);
 });
@@ -109,8 +105,8 @@ test("2回目のトーク料金を表示", async ({ page }) => {
   await page.goto("/talks/t2");
   await expect(page.locator(".price")).toHaveText("¥1,000");
 });
-test("小部屋・未読・投稿・返信・通報", async ({ page }) => {
-  await page.locator(".room-preview").first().click();
+test("地域トークの小部屋・投稿・返信・通報", async ({ page }) => {
+  await page.goto("/rooms/r1");
   await expect(page.locator(".chat-header h1")).toHaveText(
     "京都の喫茶と、街歩き",
   );
@@ -146,8 +142,8 @@ test("小部屋・未読・投稿・返信・通報", async ({ page }) => {
   await expect(page.getByRole("dialog")).toHaveCount(0);
   await page.reload();
   await expect(page.locator(".message.own")).toHaveCount(2);
-  await page.goto("/rooms");
-  await expect(page.locator(".unread-badge")).toHaveCount(0);
+  await page.goto("/rooms?tab=group");
+  await expect(page.locator(".room-card .unread-badge")).toHaveCount(0);
 });
 test("訪問予定とステータスのフリック・プロフィール保存", async ({ page }) => {
   await page.getByRole("button", { name: "次の訪問ステータス" }).click();
@@ -288,7 +284,16 @@ test("未定義URLは404を表示", async ({ page }) => {
   ).toBeVisible();
 });
 test("アクセシビリティ：ホームと主要画面", async ({ page }) => {
-  for (const path of ["/", "/talks", "/rooms", "/consult", "/profile"]) {
+  for (const path of [
+    "/",
+    "/people",
+    "/people/misaki",
+    "/rooms",
+    "/rooms/dm-misaki",
+    "/talks",
+    "/consult",
+    "/profile",
+  ]) {
     if (path !== "/") await page.goto(path);
     await expect(page.locator("main h1")).toBeVisible();
     await expect(page.locator("main > div").first()).toHaveCSS("opacity", "1");
@@ -306,4 +311,93 @@ test("アクセシビリティ：ホームと主要画面", async ({ page }) => 
       })),
     ).toEqual([]);
   }
+});
+
+test("ホームから2タップで個人プロフィールと1対1の会話へ進む", async ({
+  page,
+}) => {
+  await page
+    .getByRole("link", { name: "美咲 住んでいる", exact: true })
+    .click();
+  await expect(
+    page.getByRole("heading", { name: "美咲", level: 1, exact: true }),
+  ).toBeVisible();
+  await page
+    .getByRole("button", { name: "美咲 メッセージ", exact: true })
+    .click();
+  await expect(page.locator(".chat-header h1")).toHaveText("美咲");
+  await expect(page.getByText("あなたと美咲だけの会話")).toBeVisible();
+  await page
+    .getByRole("textbox", { name: "メッセージ", exact: true })
+    .fill("次は11月に再訪します。朝の喫茶店の話を聞きたいです。");
+  await page
+    .getByRole("button", { name: "メッセージを送信", exact: true })
+    .click();
+  await expect(page.locator(".message.own")).toContainText("11月に再訪");
+  await page.reload();
+  await expect(page.locator(".message.own")).toContainText("11月に再訪");
+  await page.goto("/rooms");
+  await expect(page.getByRole("tab", { name: /^1対1/ })).toHaveAttribute(
+    "aria-selected",
+    "true",
+  );
+  await expect(page.locator(".conversation-row")).toHaveCount(2);
+  await expect(page.locator(".conversation-row .unread-badge")).toHaveCount(0);
+});
+test("新しい個人会話の開始・重複防止・相手ごとの履歴", async ({ page }) => {
+  await page.goto("/people");
+  await page
+    .getByRole("button", { name: "あかり メッセージ", exact: true })
+    .click();
+  await expect(page.locator(".chat-header h1")).toHaveText("あかり");
+  await page.getByRole("button", { name: "写真の話をする" }).click();
+  await expect(
+    page.getByRole("textbox", { name: "メッセージ", exact: true }),
+  ).toHaveValue("はじめまして。写真についてお話ししたいです。");
+  await page
+    .getByRole("button", { name: "メッセージを送信", exact: true })
+    .click();
+  await page.goto("/people");
+  await page
+    .getByRole("button", { name: "あかり メッセージ", exact: true })
+    .click();
+  await expect(page.locator(".message.own")).toHaveCount(1);
+  await page.goto("/rooms");
+  await expect(page.locator(".conversation-row")).toHaveCount(3);
+  await page.getByRole("tab", { name: /^地域トークの小部屋/ }).click();
+  await expect(page.locator(".room-card")).toHaveCount(2);
+});
+test("個人会話をブロックし新しい受付を自分で選べる", async ({ page }) => {
+  await page.goto("/rooms/dm-misaki");
+  await page.getByRole("button", { name: "会話の設定", exact: true }).click();
+  await page
+    .getByRole("button", { name: "相手をブロックする", exact: true })
+    .click();
+  await expect(
+    page.getByRole("textbox", { name: "メッセージ", exact: true }),
+  ).toBeDisabled();
+  await page.reload();
+  await expect(
+    page.getByRole("textbox", { name: "メッセージ", exact: true }),
+  ).toBeDisabled();
+  await page.goto("/people");
+  await expect(
+    page.getByRole("button", { name: "美咲 メッセージ" }),
+  ).toHaveCount(0);
+  await page.goto("/rooms/dm-misaki");
+  await page.getByRole("button", { name: "会話の設定", exact: true }).click();
+  await page
+    .getByRole("button", { name: "ブロックを解除する", exact: true })
+    .click();
+  await expect(
+    page.getByRole("textbox", { name: "メッセージ", exact: true }),
+  ).toBeEnabled();
+  await expect(page.locator(".message:not(.own)")).toContainText(
+    "次に京都に来るのは",
+  );
+  await page.goto("/profile");
+  await page.getByLabel("新しい1対1の会話を受け付ける").check();
+  await page.getByRole("button", { name: "変更を保存" }).click();
+  await page.reload();
+  await expect(page.getByLabel("新しい1対1の会話を受け付ける")).toBeChecked();
 });

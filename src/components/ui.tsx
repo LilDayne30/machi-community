@@ -14,6 +14,7 @@ export function Avatar({
 }) {
   return (
     <span
+      aria-hidden="true"
       className={`avatar ${small ? "small" : ""}`}
       style={{ background: color }}
     >

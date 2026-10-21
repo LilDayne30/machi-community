@@ -148,7 +148,124 @@ test("実API：運営者がトークを募集し、原価を保存して読み�
 test("実API：他人の小部屋URLを開いても会話は表示されない", async ({ page }) => {
   await page.goto("/rooms/e2e-room-b");
   await expect(
-    page.getByText("参加している小部屋が見つかりません"),
+    page.getByText("参加している会話が見つかりません"),
   ).toBeVisible();
   await expect(page.getByText("参加者Bだけの秘密のメモ")).toHaveCount(0);
+});
+
+test("実API：相手を選び1対1で往復、履歴と受付設定をD1へ保存", async ({
+  page,
+  context,
+  request,
+}) => {
+  await context.addCookies([
+    { name: "machi_session", value: "e2e-dui", domain: "127.0.0.1", path: "/" },
+  ]);
+  await page.goto("/people");
+  await page
+    .getByRole("button", {
+      name: "会話相手のテストさん メッセージ",
+      exact: true,
+    })
+    .click();
+  await expect(page.locator(".chat-header h1")).toHaveText(
+    "会話相手のテストさん",
+  );
+  const conversationUrl = page.url();
+  await page
+    .getByRole("textbox", { name: "メッセージ", exact: true })
+    .fill("また京都に行きます。喫茶店の話をしませんか");
+  await page
+    .getByRole("button", { name: "メッセージを送信", exact: true })
+    .click();
+  await expect(page.locator(".message.own")).toContainText(
+    "また京都に行きます",
+  );
+  await context.addCookies([
+    {
+      name: "machi_session",
+      value: "e2e-dpeer",
+      domain: "127.0.0.1",
+      path: "/",
+    },
+  ]);
+  await page.reload();
+  await expect(page.locator(".message:not(.own)").last()).toContainText(
+    "また京都に行きます",
+  );
+  await page
+    .getByRole("textbox", { name: "メッセージ", exact: true })
+    .fill("もちろんです。次の訪問はいつですか");
+  await page
+    .getByRole("button", { name: "メッセージを送信", exact: true })
+    .click();
+  await expect(page.locator(".message.own")).toContainText(
+    "次の訪問はいつですか",
+  );
+  await context.addCookies([
+    { name: "machi_session", value: "e2e-dui", domain: "127.0.0.1", path: "/" },
+  ]);
+  await page.reload();
+  await expect(page.locator(".message:not(.own)").last()).toContainText(
+    "次の訪問はいつですか",
+  );
+  const roomId = new URL(conversationUrl).pathname.split("/").at(-1);
+  expect(
+    (
+      await request.post("/api/rooms/" + roomId + "/messages", {
+        headers: {
+          Cookie: "machi_session=e2e-dpeer",
+          Origin: "http://127.0.0.1:5173",
+        },
+        data: { body: "再読込なしで届くメッセージです" },
+      })
+    ).ok(),
+  ).toBe(true);
+  await expect(page.locator(".message:not(.own)").last()).toContainText(
+    "再読込なしで届く",
+    { timeout: 15000 },
+  );
+  await page.goto("/people");
+  await page
+    .getByRole("button", {
+      name: "会話相手のテストさん メッセージ",
+      exact: true,
+    })
+    .click();
+  await expect(page).toHaveURL(conversationUrl);
+  await page.goto("/profile");
+  await page.getByLabel("新しい1対1の会話を受け付ける").uncheck();
+  await page.getByRole("button", { name: "変更を保存" }).click();
+  await expect(page.getByRole("status")).toContainText("保存しました");
+  const peer = await (
+    await request.get("/api/bootstrap", {
+      headers: { Cookie: "machi_session=e2e-dpeer" },
+    })
+  ).json();
+  expect(peer.people.some((p: any) => p.id === "e2e-dui")).toBe(false);
+  expect(
+    peer.rooms.some((r: any) => r.kind === "direct" && r.peer.id === "e2e-dui"),
+  ).toBe(true);
+  await page.goto(conversationUrl);
+  await page.getByRole("button", { name: "会話の設定", exact: true }).click();
+  await page
+    .getByRole("button", { name: "相手をブロックする", exact: true })
+    .click();
+  await expect(
+    page.getByRole("textbox", { name: "メッセージ", exact: true }),
+  ).toBeDisabled();
+  await page.reload();
+  await expect(
+    page.getByRole("textbox", { name: "メッセージ", exact: true }),
+  ).toBeDisabled();
+  await page.getByRole("button", { name: "会話の設定", exact: true }).click();
+  await page
+    .getByRole("button", { name: "ブロックを解除する", exact: true })
+    .click();
+  await expect(
+    page.getByRole("textbox", { name: "メッセージ", exact: true }),
+  ).toBeEnabled();
+  await expect(page.locator(".message:not(.own)").last()).toContainText(
+    "再読込なしで届く",
+  );
 });

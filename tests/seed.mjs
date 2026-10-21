@@ -13,6 +13,7 @@ for (const table of [
   "consultations",
   "activity",
   "blocks",
+  "direct_conversations",
   "room_members",
   "messages",
   "bookings",
@@ -31,6 +32,12 @@ for (const [id, name, role] of [
   ["pa", "事業者A", "provider"],
   ["pb", "事業者B", "provider"],
   ["ui", "接続テスト会員", "member"],
+  ["da", "個人会話A", "member"],
+  ["db", "個人会話B", "member"],
+  ["dc", "個人会話C", "member"],
+  ["closed", "受付停止の会員", "member"],
+  ["dui", "個人会話の操作会員", "member"],
+  ["dpeer", "会話相手のテストさん", "member"],
   ["uip", "接続テスト事業者", "provider"],
   ...Array.from({ length: 10 }, (_, i) => [
     "race" + i,
@@ -38,8 +45,15 @@ for (const [id, name, role] of [
     "member",
   ]),
 ]) {
+  const profile = JSON.stringify({
+    relation: "最近訪れた",
+    bio: "喫茶店と再訪の話をしたいです",
+    interests: ["喫茶店"],
+    availability: "土日の夜",
+    acceptsMessages: ["da", "db", "dc", "dui", "dpeer"].includes(id),
+  });
   statements.push(
-    `INSERT INTO users(id,google_sub,email,name,role,profile) VALUES(${q("e2e-" + id)},${q("google-" + id)},${q(id + "@example.test")},${q(name)},${q(role)},'{"relation":"最近訪れた"}')`,
+    `INSERT INTO users(id,google_sub,email,name,role,profile) VALUES(${q("e2e-" + id)},${q("google-" + id)},${q(id + "@example.test")},${q(name)},${q(role)},${q(profile)})`,
   );
   statements.push(
     `INSERT INTO sessions(token_hash,user_id,expires_at) VALUES(${q(hash("e2e-" + id))},${q("e2e-" + id)},unixepoch()+86400)`,

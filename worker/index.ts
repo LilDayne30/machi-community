@@ -12,7 +12,7 @@ import {
   safeText,
   sha256,
 } from "./security";
-import { emptyProfile } from "../src/lib/data";
+import { emptyProfile, type CommunityMember } from "../src/lib/data";
 type User = {
   id: string;
   google_sub: string;
@@ -39,6 +39,31 @@ type Env = {
 const app = new Hono<{ Bindings: Env; Variables: { user: User | null } }>();
 const uid = () => crypto.randomUUID();
 const now = () => Math.floor(Date.now() / 1000);
+function publicMember(
+  user: Pick<User, "id" | "name" | "profile">,
+): CommunityMember {
+  const p = {
+    ...emptyProfile,
+    ...parseJSON<Partial<typeof emptyProfile>>(user.profile, {}),
+  };
+  return {
+    id: user.id,
+    name: user.name,
+    bio: p.bio,
+    relation: p.relation,
+    interests: p.interests,
+    availability: p.availability,
+    visitDate: p.visitDate,
+  };
+}
+async function isBlocked(db: D1Database, a: string, b: string) {
+  return !!(await db
+    .prepare(
+      "SELECT 1 FROM blocks WHERE (user_id=? AND blocked_id=?) OR (user_id=? AND blocked_id=?)",
+    )
+    .bind(a, b, b, a)
+    .first());
+}
 const cookieName = (e: Env) =>
   e.APP_ENV === "development" ? "machi_session" : "__Host-machi_session";
 const options = (e: Env) => ({
@@ -150,6 +175,7 @@ app.get("/api/bootstrap", async (c) => {
       talks: [],
       notes: [],
       rooms: [],
+      people: [],
       bookings: [],
       consultations: [],
       providers: [],
@@ -206,6 +232,16 @@ app.get("/api/bootstrap", async (c) => {
     .prepare("SELECT id,name,theme,bio,price FROM providers WHERE verified=1")
     .all<any>();
   const rooms = [];
+  const people = u
+    ? (
+        await db
+          .prepare(
+            "SELECT id,name,profile FROM users WHERE id!=? AND role!='provider' AND json_extract(profile,'$.acceptsMessages')=1 AND id NOT IN (SELECT blocked_id FROM blocks WHERE user_id=? UNION SELECT user_id FROM blocks WHERE blocked_id=?) ORDER BY name LIMIT 100",
+          )
+          .bind(u.id, u.id, u.id)
+          .all<User>()
+      ).results.map(publicMember)
+    : [];
   let bookings: any[] = [],
     consultations: any[] = [];
   if (u) {
@@ -216,6 +252,12 @@ app.get("/api/bootstrap", async (c) => {
       .bind(u.id)
       .all<any>();
     for (const r of rs.results) {
+      const peer = await db
+        .prepare(
+          "SELECT u.id,u.name,u.profile FROM direct_conversations dc JOIN users u ON u.id=CASE WHEN dc.user_low=? THEN dc.user_high ELSE dc.user_low END WHERE dc.room_id=?",
+        )
+        .bind(u.id, r.id)
+        .first<User>();
       const ms = await db
         .prepare(
           `SELECT m.*,u.name FROM messages m JOIN users u ON m.user_id=u.id WHERE m.room_id=? AND m.user_id NOT IN (SELECT blocked_id FROM blocks WHERE user_id=?) ORDER BY m.created_at DESC LIMIT 100`,
@@ -230,9 +272,18 @@ app.get("/api/bootstrap", async (c) => {
         .first<any>();
       rooms.push({
         id: r.id,
-        title: r.title,
-        subtitle: r.subtitle,
+        title: peer?.name || r.title,
+        subtitle: peer ? publicMember(peer).interests.join("・") : r.subtitle,
         image: r.image,
+        kind: peer ? "direct" : "group",
+        peer: peer ? publicMember(peer) : undefined,
+        blocked: peer ? await isBlocked(db, u.id, peer.id) : false,
+        blockedByMe: peer
+          ? !!(await db
+              .prepare("SELECT 1 FROM blocks WHERE user_id=? AND blocked_id=?")
+              .bind(u.id, peer.id)
+              .first())
+          : false,
         members: r.members,
         unread: unread?.n || 0,
         messages: ms.results.reverse().map((m) => ({
@@ -278,6 +329,7 @@ app.get("/api/bootstrap", async (c) => {
     talks,
     notes,
     rooms,
+    people,
     bookings,
     consultations,
     providers: ps.results,
@@ -457,12 +509,83 @@ app.put("/api/profile", async (c) => {
           "平日の昼",
           "不定期・都度相談",
         ]),
+        acceptsMessages: z.boolean().default(false),
       }),
     );
   await c.env.DB.prepare("UPDATE users SET name=?,profile=? WHERE id=?")
     .bind(p.name, JSON.stringify(p), u.id)
     .run();
   return c.json({ ok: true });
+});
+app.post("/api/conversations", async (c) => {
+  const u = mustUser(c),
+    db = c.env.DB;
+  const { personId } = await json(
+    c,
+    z.object({ personId: z.string().min(1).max(200) }),
+  );
+  if (personId === u.id)
+    throw new HTTPException(400, { message: "会話する相手を選んでください" });
+  if (u.role === "provider")
+    throw new HTTPException(403, {
+      message: "事業者への連絡はプロ相談から行います",
+    });
+  const target = await db
+    .prepare("SELECT * FROM users WHERE id=? AND role!='provider'")
+    .bind(personId)
+    .first<User>();
+  if (!target || (await isBlocked(db, u.id, personId)))
+    throw new HTTPException(403, {
+      message: "この相手との新しい会話は開始できません",
+    });
+  const [low, high] = [u.id, personId].sort();
+  const existing = await db
+    .prepare(
+      "SELECT room_id id FROM direct_conversations WHERE user_low=? AND user_high=?",
+    )
+    .bind(low, high)
+    .first<{ id: string }>();
+  if (existing) return c.json(existing);
+  if (
+    !parseJSON<Partial<typeof emptyProfile>>(target.profile, {}).acceptsMessages
+  )
+    throw new HTTPException(403, {
+      message: "この相手は新しい会話を受け付けていません",
+    });
+  const recent = await db
+    .prepare(
+      "SELECT count(*) n FROM activity WHERE user_id=? AND kind='conversation_started' AND created_at>datetime('now','-1 hour')",
+    )
+    .bind(u.id)
+    .first<{ n: number }>();
+  if ((recent?.n || 0) >= 10)
+    throw new HTTPException(429, {
+      message: "少し待ってから新しい会話を始めてください",
+    });
+  const id = "dm-" + (await sha256(JSON.stringify([low, high])));
+  await db.batch([
+    db
+      .prepare(
+        "INSERT OR IGNORE INTO rooms(id,title,subtitle,image) VALUES(?,'1対1の会話','','')",
+      )
+      .bind(id),
+    db
+      .prepare(
+        "INSERT OR IGNORE INTO direct_conversations(room_id,user_low,user_high) VALUES(?,?,?)",
+      )
+      .bind(id, low, high),
+    db
+      .prepare(
+        "INSERT OR IGNORE INTO room_members(room_id,user_id) VALUES(?,?),(?,?)",
+      )
+      .bind(id, low, id, high),
+    db
+      .prepare(
+        "INSERT INTO activity(id,user_id,kind,target_id) VALUES(?,?,'conversation_started',?)",
+      )
+      .bind(uid(), u.id, id),
+  ]);
+  return c.json({ id }, 201);
 });
 app.post("/api/rooms/:id/read", async (c) => {
   const u = mustUser(c);
@@ -479,6 +602,16 @@ app.post("/api/rooms/:id/messages", async (c) => {
     db = c.env.DB,
     rid = c.req.param("id");
   await member(db, u.id, rid);
+  const direct = await db
+    .prepare(
+      "SELECT user_low,user_high FROM direct_conversations WHERE room_id=?",
+    )
+    .bind(rid)
+    .first<{ user_low: string; user_high: string }>();
+  if (direct && (await isBlocked(db, direct.user_low, direct.user_high)))
+    throw new HTTPException(403, {
+      message: "この会話にはメッセージを送信できません",
+    });
   const p = await json(
     c,
     z.object({
@@ -525,10 +658,12 @@ app.post("/api/rooms/:id/messages", async (c) => {
         db,
         "reply:" + id + ":" + p.id,
         p.email,
-        "machi：小部屋に返信が届きました",
-        '<p>参加中の小部屋に新しい投稿があります。</p><p><a href="' +
+        direct
+          ? "machi：メッセージが届きました"
+          : "machi：小部屋に返信が届きました",
+        '<p>新しいメッセージがあります。</p><p><a href="' +
           safeText(c.env.APP_ORIGIN + "/rooms/" + rid) +
-          '">小部屋を開く</a></p>',
+          '">会話を開く</a></p>',
       ),
     ),
   ]);
@@ -562,20 +697,50 @@ app.post("/api/reports", async (c) => {
 });
 app.post("/api/blocks", async (c) => {
   const u = mustUser(c),
-    p = await json(c, z.object({ messageId: z.string() }));
-  const m = await c.env.DB.prepare(
-    "SELECT room_id,user_id FROM messages WHERE id=?",
-  )
-    .bind(p.messageId)
-    .first<any>();
-  if (!m) throw new HTTPException(404, { message: "投稿が見つかりません" });
-  await member(c.env.DB, u.id, m.room_id);
-  if (m.user_id === u.id)
+    p = await json(
+      c,
+      z
+        .object({
+          messageId: z.string().optional(),
+          personId: z.string().optional(),
+        })
+        .refine(
+          (p) => !!p.messageId !== !!p.personId,
+          "相手を指定してください",
+        ),
+    );
+  let targetId = p.personId;
+  if (p.messageId) {
+    const m = await c.env.DB.prepare(
+      "SELECT room_id,user_id FROM messages WHERE id=?",
+    )
+      .bind(p.messageId)
+      .first<any>();
+    if (!m) throw new HTTPException(404, { message: "投稿が見つかりません" });
+    await member(c.env.DB, u.id, m.room_id);
+    targetId = m.user_id;
+  } else if (
+    !(await c.env.DB.prepare(
+      "SELECT 1 FROM direct_conversations WHERE (user_low=? AND user_high=?) OR (user_low=? AND user_high=?)",
+    )
+      .bind(u.id, targetId!, targetId!, u.id)
+      .first())
+  ) {
+    throw new HTTPException(403, { message: "会話する相手が見つかりません" });
+  }
+  if (targetId === u.id)
     throw new HTTPException(400, { message: "自分自身は非表示にできません" });
   await c.env.DB.prepare(
     "INSERT OR IGNORE INTO blocks(user_id,blocked_id) VALUES(?,?)",
   )
-    .bind(u.id, m.user_id)
+    .bind(u.id, targetId!)
+    .run();
+  return c.json({ ok: true });
+});
+app.delete("/api/blocks/:personId", async (c) => {
+  const u = mustUser(c);
+  await c.env.DB.prepare("DELETE FROM blocks WHERE user_id=? AND blocked_id=?")
+    .bind(u.id, c.req.param("personId"))
     .run();
   return c.json({ ok: true });
 });

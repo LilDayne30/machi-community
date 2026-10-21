@@ -10,7 +10,9 @@ import {
   notes,
   rooms,
   talks,
+  communityPeople,
   type Bootstrap,
+  type CommunityMember,
   type Profile,
 } from "./data";
 const sample: Bootstrap = {
@@ -20,6 +22,7 @@ const sample: Bootstrap = {
   talks,
   notes,
   rooms,
+  people: communityPeople,
   bookings: [],
   consultations: [],
   configured: { google: false, stripe: false },
@@ -42,6 +45,7 @@ type Context = {
   notify: string;
   guard: () => boolean;
   refresh: () => Promise<void>;
+  startConversation: (person: CommunityMember) => Promise<string | null>;
 };
 const C = createContext<Context>(null!);
 export function Provider({ children }: { children: ReactNode }) {
@@ -71,6 +75,13 @@ export function Provider({ children }: { children: ReactNode }) {
             setState({
               ...sample,
               ...s,
+              people: s.people || sample.people,
+              rooms: s.people
+                ? s.rooms
+                : [
+                    ...sample.rooms.filter((r) => r.kind === "direct"),
+                    ...(s.rooms || []),
+                  ],
               mode: "preview",
               user: null,
               configured: b.configured,
@@ -91,6 +102,20 @@ export function Provider({ children }: { children: ReactNode }) {
     void refresh();
   }, []);
   useEffect(() => {
+    if (data.mode !== "production" || !data.user) return;
+    const update = () => {
+      if (!document.hidden) void refresh();
+    };
+    const timer = setInterval(update, 12000);
+    window.addEventListener("focus", update);
+    document.addEventListener("visibilitychange", update);
+    return () => {
+      clearInterval(timer);
+      window.removeEventListener("focus", update);
+      document.removeEventListener("visibilitychange", update);
+    };
+  }, [data.mode, data.user?.id]);
+  useEffect(() => {
     if (!notify) return;
     const t = setTimeout(() => setNotify(""), 4000);
     return () => clearTimeout(t);
@@ -102,9 +127,55 @@ export function Provider({ children }: { children: ReactNode }) {
     }
     return true;
   }
+  async function startConversation(person: CommunityMember) {
+    if (!guard()) return null;
+    if (data.mode === "production") {
+      const result = await api<{ id: string }>("/conversations", {
+        method: "POST",
+        body: JSON.stringify({ personId: person.id }),
+      });
+      await refresh();
+      return result.id;
+    }
+    const existing = data.rooms.find(
+      (r) => r.kind === "direct" && r.peer?.id === person.id,
+    );
+    if (existing) return existing.id;
+    const id = "dm-" + person.id;
+    setData((d) => ({
+      ...d,
+      rooms: d.rooms.some((r) => r.id === id)
+        ? d.rooms
+        : [
+            {
+              id,
+              kind: "direct",
+              peer: person,
+              title: person.name,
+              subtitle: person.interests.join("・"),
+              image: "",
+              members: 2,
+              unread: 0,
+              messages: [],
+            },
+            ...d.rooms,
+          ],
+    }));
+    return id;
+  }
   return (
     <C.Provider
-      value={{ data, loading, error, setData, toast, notify, guard, refresh }}
+      value={{
+        data,
+        loading,
+        error,
+        setData,
+        toast,
+        notify,
+        guard,
+        refresh,
+        startConversation,
+      }}
     >
       {children}
     </C.Provider>

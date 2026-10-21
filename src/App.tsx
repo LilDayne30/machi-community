@@ -52,6 +52,7 @@ import {
   yen,
   type Booking,
   type Consultation,
+  type CommunityMember,
   type Profile,
   type Talk,
 } from "./lib/data";
@@ -68,8 +69,8 @@ import {
 } from "./components/ui";
 const nav = [
   { to: "/", label: "地域ホーム", icon: HomeIcon },
-  { to: "/talks", label: "地域トーク", icon: Users },
-  { to: "/rooms", label: "マイルーム", icon: MessageCircle },
+  { to: "/people", label: "話せる人", icon: Users },
+  { to: "/rooms", label: "メッセージ", icon: MessageCircle },
   { to: "/consult", label: "プロへの相談", icon: Compass },
   { to: "/profile", label: "プロフィール", icon: Settings2 },
 ];
@@ -215,6 +216,8 @@ export default function App() {
                   <Route path="/talks/:id" element={<TalkDetail />} />
                   <Route path="/rooms" element={<Rooms />} />
                   <Route path="/rooms/:id" element={<RoomDetail />} />
+                  <Route path="/people" element={<Members />} />
+                  <Route path="/people/:id" element={<MemberDetail />} />
                   <Route path="/notes/:id" element={<NoteDetail />} />
                   <Route path="/consult" element={<Consult />} />
                   <Route path="/profile" element={<ProfilePage />} />
@@ -260,9 +263,7 @@ export default function App() {
                   ? "相談"
                   : n.label === "地域ホーム"
                     ? "ホーム"
-                    : n.label === "地域トーク"
-                      ? "トーク"
-                      : "ルーム"}
+                    : n.label}
             </span>
           </NavLink>
         ))}
@@ -310,7 +311,7 @@ export default function App() {
         <Modal title="使い方・サポート" onClose={() => setHelp(false)}>
           <div className="prose">
             <p>
-              地域トークから少人数のオンライン交流に申し込めます。参加後はマイルームで同じ相手と会話を続けられます。
+              「話せる人」から相手を選んで、1対1でメッセージを送れます。同じ相手との会話は、次の旅でも続けられます。地域トークはホームから申し込めます。
             </p>
             <p>
               旅のステータスは左右にフリックするか、矢印ボタンで切り替えます。
@@ -402,63 +403,88 @@ function Home() {
           </div>
           <Link
             className="hero-action glass"
-            to="/talks"
-            aria-label="京都の地域トークへ"
+            to="/people"
+            aria-label="京都で話せる人を見る"
           >
             <ArrowUpRight size={23} />
           </Link>
         </div>
         <span className="hero-credit">HIGASHIYAMA, KYOTO</span>
       </section>
+      <section className="home-people">
+        <SectionTitle title="話せる人" to="/people" />
+        <div className="people-grid">
+          {data.people.slice(0, 3).map((person) => (
+            <MemberCard key={person.id} person={person} />
+          ))}
+        </div>
+        {!data.people.length && (
+          <Empty>
+            {data.user
+              ? "新しい会話を受け付けている人はまだいません。"
+              : "ログインすると、話せる人を見られます。"}
+            <Link to="/profile">プロフィールを開く</Link>
+          </Empty>
+        )}
+      </section>
       <div className="home-grid">
         <div className="home-main">
+          <section>
+            <SectionTitle
+              title="会話のつづき"
+              to="/rooms"
+              label="メッセージへ"
+            />
+            <div className="room-preview-list">
+              {data.rooms
+                .filter((r) => r.kind === "direct")
+                .slice(0, 2)
+                .map((r) => (
+                  <Link
+                    className="room-preview glass"
+                    key={r.id}
+                    to={"/rooms/" + r.id}
+                  >
+                    <div className="room-cover">
+                      <Avatar name={r.title} color={r.peer?.color} />
+                      {r.unread > 0 && <span className="unread-dot" />}
+                    </div>
+                    <div className="room-preview-text">
+                      <h3>{r.title}</h3>
+                      <p>{r.messages.at(-1)?.body || "会話を始めましょう"}</p>
+                      <small>
+                        <LockKeyhole size={12} />
+                        1対1<span>·</span>
+                        {r.messages.at(-1)?.time || ""}
+                      </small>
+                    </div>
+                    {r.unread > 0 ? (
+                      <span className="unread-badge">{r.unread}</span>
+                    ) : (
+                      <ChevronRight size={17} />
+                    )}
+                  </Link>
+                ))}
+            </div>
+            {data.mode === "production" && !data.user && (
+              <Link className="text-link" to="/profile">
+                ログインしてメッセージを見る
+                <ArrowUpRight size={15} />
+              </Link>
+            )}
+            {!data.rooms.some((r) => r.kind === "direct") && data.user && (
+              <Empty>
+                会話を始めると、ここに表示されます。
+                <Link to="/people">話せる人を見る</Link>
+              </Empty>
+            )}
+          </section>
           <section>
             <SectionTitle title="次の地域トーク" to="/talks" />
             {data.talks[0] ? (
               <TalkCard talk={data.talks[0]} compact />
             ) : (
               <Empty>募集中のトークはありません</Empty>
-            )}
-          </section>
-          <section>
-            <SectionTitle
-              title="会話のつづき"
-              to="/rooms"
-              label="マイルームへ"
-            />
-            <div className="room-preview-list">
-              {data.rooms.slice(0, 2).map((r) => (
-                <Link
-                  className="room-preview glass"
-                  key={r.id}
-                  to={"/rooms/" + r.id}
-                >
-                  <div className="room-cover">
-                    <img src={r.image} alt="" />
-                    {r.unread > 0 && <span className="unread-dot" />}
-                  </div>
-                  <div className="room-preview-text">
-                    <h3>{r.title}</h3>
-                    <p>{r.messages.at(-1)?.body || "会話を始めましょう"}</p>
-                    <small>
-                      <Users size={12} />
-                      {r.members}人<span>·</span>
-                      {r.messages.at(-1)?.time || ""}
-                    </small>
-                  </div>
-                  {r.unread > 0 ? (
-                    <span className="unread-badge">{r.unread}</span>
-                  ) : (
-                    <ChevronRight size={17} />
-                  )}
-                </Link>
-              ))}
-            </div>
-            {data.mode === "production" && !data.user && (
-              <Link className="text-link" to="/profile">
-                ログインして参加した小部屋を見る
-                <ArrowUpRight size={15} />
-              </Link>
             )}
           </section>
         </div>
@@ -1049,52 +1075,317 @@ function TalkDetail() {
     </>
   );
 }
-function Rooms() {
-  const { data } = useApp();
+function ConversationButton({
+  person,
+  blocked = false,
+}: {
+  person: CommunityMember;
+  blocked?: boolean;
+}) {
+  const { startConversation, toast } = useApp(),
+    navigate = useNavigate(),
+    [busy, setBusy] = useState(false);
   return (
-    <>
-      <Heading eyebrow="YOUR CONVERSATIONS" title="マイルーム">
-        <span className="pill">
-          <MessageCircle size={14} />
-          {data.rooms.length}つの小部屋
-        </span>
-      </Heading>
-      <div className="rooms-grid">
-        {data.rooms.map((r) => (
-          <Link key={r.id} className="room-card glass" to={"/rooms/" + r.id}>
-            <div className="room-card-image">
-              <img src={r.image} alt="" />
-              <span className="photo-badge">
-                <Users size={13} />
-                {r.members}人
-              </span>
-            </div>
-            <div className="room-card-body">
-              <div className="room-card-header">
-                <h2>{r.title}</h2>
-                {r.unread > 0 && (
-                  <span className="unread-badge">{r.unread}</span>
-                )}
-              </div>
-              <p>{r.subtitle}</p>
-              <blockquote>{r.messages.at(-1)?.body}</blockquote>
-              <div className="text-link">
-                会話を開く
-                <ArrowRight size={16} />
-              </div>
-            </div>
-          </Link>
+    <button
+      className="button primary"
+      aria-label={
+        person.name +
+        " " +
+        (blocked ? "送信できません" : busy ? "開いています…" : "メッセージ")
+      }
+      disabled={busy || blocked}
+      onClick={async () => {
+        setBusy(true);
+        try {
+          const id = await startConversation(person);
+          if (id) navigate("/rooms/" + id);
+        } catch (error) {
+          toast((error as Error).message);
+        } finally {
+          setBusy(false);
+        }
+      }}
+    >
+      <MessageCircle size={16} />
+      {blocked ? "送信できません" : busy ? "開いています…" : "メッセージ"}
+      <ArrowUpRight size={15} />
+    </button>
+  );
+}
+function MemberCard({ person }: { person: CommunityMember }) {
+  return (
+    <motion.article
+      className="person-card glass"
+      initial={{ opacity: 0, y: 12 }}
+      animate={{ opacity: 1, y: 0 }}
+    >
+      <Link
+        to={"/people/" + person.id}
+        className="person-identity"
+        title={person.name + "のプロフィール"}
+      >
+        <Avatar name={person.name} color={person.color} />
+        <div>
+          <h3>{person.name}</h3>
+          <span>
+            <MapPin size={12} />
+            {person.relation}
+          </span>
+        </div>
+        <ChevronRight size={16} />
+      </Link>
+      <div className="person-interests">
+        {person.interests.map((interest) => (
+          <span key={interest}>{interest}</span>
         ))}
       </div>
-      {!data.rooms.length && (
+      <p>{person.bio || "自己紹介はまだありません"}</p>
+      <small>
+        <CalendarDays size={13} />
+        {person.availability}
+      </small>
+      <ConversationButton person={person} />
+    </motion.article>
+  );
+}
+function Members() {
+  const { data } = useApp(),
+    [query, setQuery] = useState(""),
+    [theme, setTheme] = useState("すべて");
+  const list = data.people.filter(
+    (p) =>
+      (!query || (p.name + p.bio + p.interests.join(" ")).includes(query)) &&
+      (theme === "すべて" || p.interests.includes(theme)),
+  );
+  return (
+    <>
+      <Heading eyebrow="PEOPLE IN KYOTO" title="話せる人">
+        <span className="pill">
+          <MessageCircle size={14} />
+          1対1の会話
+        </span>
+      </Heading>
+      <div className="people-tools glass">
+        <label className="field">
+          名前・話したいこと
+          <input
+            type="search"
+            value={query}
+            placeholder="喫茶店、古本屋…"
+            onChange={(e) => setQuery(e.target.value)}
+          />
+        </label>
+        <div className="filter-row">
+          {["すべて", "喫茶店", "街歩き", "古本屋", "写真", "留学"].map((s) => (
+            <CheckChip
+              key={s}
+              selected={theme === s}
+              onClick={() => setTheme(s)}
+            >
+              {s}
+            </CheckChip>
+          ))}
+        </div>
+      </div>
+      <div className="people-grid">
+        {list.map((p) => (
+          <MemberCard key={p.id} person={p} />
+        ))}
+      </div>
+      {!list.length && (
         <Empty>
-          参加後の小部屋がここに表示されます。
-          <Link to="/talks">地域トークを見る</Link>
+          {data.mode === "production" && !data.user
+            ? "ログインすると、話せる人を見られます。"
+            : "条件に合う人はまだいません。"}
+          <Link to="/profile">自分のプロフィールへ</Link>
         </Empty>
       )}
       <div className="info-strip glass">
         <LockKeyhole size={18} />
-        <p>会話を読めるのは、この小部屋に参加した人だけです。</p>
+        <p>
+          新しい会話を受け付けている人だけが表示されます。受付はプロフィールで選べます。
+        </p>
+      </div>
+    </>
+  );
+}
+function MemberDetail() {
+  const { id } = useParams(),
+    { data } = useApp();
+  const conversation = data.rooms.find(
+    (r) => r.kind === "direct" && r.peer?.id === id,
+  );
+  const person = data.people.find((p) => p.id === id) || conversation?.peer;
+  if (!person)
+    return (
+      <Empty>
+        プロフィールが見つかりません<Link to="/people">話せる人へ</Link>
+      </Empty>
+    );
+  return (
+    <>
+      <Link to="/people" className="back-link">
+        <ArrowLeft size={16} />
+        話せる人
+      </Link>
+      <article className="member-profile glass">
+        <div className="member-profile-top">
+          <Avatar name={person.name} color={person.color} />
+          <span className="pill">
+            <MapPin size={13} />
+            京都・{person.relation}
+          </span>
+        </div>
+        <h1>{person.name}</h1>
+        <p className="member-bio">{person.bio || "自己紹介はまだありません"}</p>
+        <div className="person-interests">
+          {person.interests.map((s) => (
+            <span key={s}>{s}</span>
+          ))}
+        </div>
+        <dl>
+          <dt>話せる時間</dt>
+          <dd>{person.availability}</dd>
+          {person.visitDate && (
+            <>
+              <dt>次の訪問</dt>
+              <dd>{dateLabel(person.visitDate)}</dd>
+            </>
+          )}
+        </dl>
+        <ConversationButton person={person} blocked={conversation?.blocked} />
+        <small>
+          <LockKeyhole size={13} />
+          メッセージはあなたと相手だけに届きます
+        </small>
+      </article>
+    </>
+  );
+}
+function Rooms() {
+  const { data } = useApp(),
+    location = useLocation(),
+    [tab, setTab] = useState(
+      location.search.includes("group") ? "group" : "direct",
+    );
+  const direct = data.rooms.filter((r) => r.kind === "direct"),
+    groups = data.rooms.filter((r) => r.kind !== "direct");
+  return (
+    <>
+      <Heading eyebrow="YOUR CONVERSATIONS" title="メッセージ">
+        <Link className="button subtle small-button" to="/people">
+          <Plus size={16} />
+          相手を探す
+        </Link>
+      </Heading>
+      <div className="conversation-tabs" role="tablist" aria-label="会話の種類">
+        <button
+          role="tab"
+          id="direct-tab"
+          aria-controls="conversations-panel"
+          aria-selected={tab === "direct"}
+          onClick={() => setTab("direct")}
+          className={tab === "direct" ? "active" : ""}
+        >
+          1対1<span>{direct.length}</span>
+        </button>
+        <button
+          role="tab"
+          id="group-tab"
+          aria-controls="conversations-panel"
+          aria-selected={tab === "group"}
+          onClick={() => setTab("group")}
+          className={tab === "group" ? "active" : ""}
+        >
+          地域トークの小部屋<span>{groups.length}</span>
+        </button>
+      </div>
+      <div
+        id="conversations-panel"
+        role="tabpanel"
+        aria-labelledby={tab === "direct" ? "direct-tab" : "group-tab"}
+      >
+        {tab === "direct" ? (
+          <div className="conversation-list">
+            {direct.map((r) => (
+              <Link
+                className="conversation-row glass"
+                key={r.id}
+                to={"/rooms/" + r.id}
+              >
+                <Avatar name={r.title} color={r.peer?.color} />
+                <div className="conversation-copy">
+                  <div>
+                    <h2>{r.title}</h2>
+                    <time>{r.messages.at(-1)?.time}</time>
+                  </div>
+                  <p>
+                    {r.blocked
+                      ? "送信できません"
+                      : r.messages.at(-1)?.body || "最初のメッセージを送る"}
+                  </p>
+                  <small>{r.peer?.interests.join("・") || "1対1の会話"}</small>
+                </div>
+                {r.unread > 0 ? (
+                  <span className="unread-badge">{r.unread}</span>
+                ) : (
+                  <ChevronRight size={17} />
+                )}
+              </Link>
+            ))}
+            {!direct.length && (
+              <Empty>
+                まだ会話はありません<Link to="/people">話せる人を探す</Link>
+              </Empty>
+            )}
+          </div>
+        ) : (
+          <div className="rooms-grid">
+            {groups.map((r) => (
+              <Link
+                key={r.id}
+                className="room-card glass"
+                to={"/rooms/" + r.id}
+              >
+                <div className="room-card-image">
+                  <img src={r.image} alt="" />
+                  <span className="photo-badge">
+                    <Users size={13} />
+                    {r.members}人
+                  </span>
+                </div>
+                <div className="room-card-body">
+                  <div className="room-card-header">
+                    <h2>{r.title}</h2>
+                    {r.unread > 0 && (
+                      <span className="unread-badge">{r.unread}</span>
+                    )}
+                  </div>
+                  <p>{r.subtitle}</p>
+                  <blockquote>{r.messages.at(-1)?.body}</blockquote>
+                  <div className="text-link">
+                    会話を開く
+                    <ArrowRight size={16} />
+                  </div>
+                </div>
+              </Link>
+            ))}
+            {!groups.length && (
+              <Empty>
+                地域トーク参加後の小部屋が表示されます。
+                <Link to="/talks">地域トークを見る</Link>
+              </Empty>
+            )}
+          </div>
+        )}
+      </div>
+      <div className="info-strip glass">
+        <LockKeyhole size={18} />
+        <p>
+          {tab === "direct"
+            ? "1対1の会話を読めるのは、あなたと相手だけです。"
+            : "小部屋の会話は、その参加者だけが読めます。"}
+        </p>
       </div>
     </>
   );
@@ -1108,15 +1399,69 @@ function RoomDetail() {
     [reason, setReason] = useState(""),
     [busy, setBusy] = useState(false),
     [menu, setMenu] = useState(""),
+    [details, setDetails] = useState(false),
     end = useRef<HTMLDivElement>(null);
   const room = data.rooms.find((r) => r.id === id);
-  useEffect(() => {
-    if (data.mode !== "production") return;
-    const timer = setInterval(() => {
-      if (!document.hidden) void refresh();
-    }, 12000);
-    return () => clearInterval(timer);
-  }, [id, data.mode]);
+  const direct = room?.kind === "direct";
+  async function blockPeer() {
+    if (!room?.peer || !guard()) return;
+    setBusy(true);
+    try {
+      if (data.mode === "production") {
+        await api("/blocks", {
+          method: "POST",
+          body: JSON.stringify({ personId: room.peer.id }),
+        });
+        await refresh();
+      } else
+        setData((d) => ({
+          ...d,
+          people: d.people.filter((p) => p.id !== room.peer!.id),
+          rooms: d.rooms.map((r) =>
+            r.id === id
+              ? {
+                  ...r,
+                  blocked: true,
+                  blockedByMe: true,
+                }
+              : r,
+          ),
+        }));
+      setDetails(false);
+      toast("相手をブロックしました");
+    } catch (error) {
+      toast((error as Error).message);
+    } finally {
+      setBusy(false);
+    }
+  }
+  async function unblockPeer() {
+    if (!room?.peer || !guard()) return;
+    setBusy(true);
+    try {
+      if (data.mode === "production") {
+        await api("/blocks/" + encodeURIComponent(room.peer.id), {
+          method: "DELETE",
+        });
+        await refresh();
+      } else
+        setData((d) => ({
+          ...d,
+          people: d.people.some((p) => p.id === room.peer!.id)
+            ? d.people
+            : [...d.people, room.peer!],
+          rooms: d.rooms.map((r) =>
+            r.id === id ? { ...r, blocked: false, blockedByMe: false } : r,
+          ),
+        }));
+      setDetails(false);
+      toast("ブロックを解除しました");
+    } catch (error) {
+      toast((error as Error).message);
+    } finally {
+      setBusy(false);
+    }
+  }
   useEffect(() => {
     if (room?.unread) {
       if (data.mode === "production")
@@ -1129,10 +1474,10 @@ function RoomDetail() {
           rooms: d.rooms.map((r) => (r.id === id ? { ...r, unread: 0 } : r)),
         }));
     }
-  }, [id]);
+  }, [id, room?.unread]);
   async function send(e: FormEvent) {
     e.preventDefault();
-    if (!body.trim() || !guard()) return;
+    if (!body.trim() || room?.blocked || !guard()) return;
     setBusy(true);
     try {
       if (data.mode === "production") {
@@ -1215,110 +1560,161 @@ function RoomDetail() {
       setBusy(false);
     }
   }
-  if (!room) return <Empty>参加している小部屋が見つかりません</Empty>;
+  if (!room) return <Empty>参加している会話が見つかりません</Empty>;
   return (
     <>
       <Link to="/rooms" className="back-link">
         <ArrowLeft size={16} />
-        マイルーム
+        メッセージ
       </Link>
       <div className="chat-panel glass">
         <div className="chat-header">
           <div className="room-cover">
-            <img src={room.image} alt="" />
+            {direct ? (
+              <Link
+                to={"/people/" + room.peer?.id}
+                aria-label={room.title + "のプロフィール"}
+              >
+                <Avatar name={room.title} color={room.peer?.color} />
+              </Link>
+            ) : (
+              <img src={room.image} alt="" />
+            )}
           </div>
           <div>
             <h1>{room.title}</h1>
             <p>
-              <Users size={13} />
-              {room.members}人 <span>·</span>
+              {direct ? <MessageCircle size={13} /> : <Users size={13} />}
+              {direct ? "1対1の会話" : room.members + "人"} <span>·</span>
               <LockKeyhole size={12} />
-              参加者のみ
+              {direct ? "ふたりだけ" : "参加者のみ"}
             </p>
           </div>
           <button
             className="icon-button"
-            aria-label="小部屋の情報"
+            aria-label={direct ? "会話の設定" : "小部屋の情報"}
             onClick={() =>
-              toast(room.subtitle + " · 参加者だけが会話を読めます")
+              direct
+                ? setDetails(true)
+                : toast(room.subtitle + " · 参加者だけが会話を読めます")
             }
           >
             <CircleHelp size={19} />
           </button>
         </div>
         <div className="chat-messages">
-          <div className="chat-date">京都・喫茶店と街歩き</div>
-          {room.messages.map((m) => (
-            <div className={"message " + (m.own ? "own" : "")} key={m.id}>
-              {!m.own && <Avatar name={m.author} small />}
-              <div className="message-main">
-                <div className="message-author">
-                  {m.own ? "あなた" : m.author}
-                  <time>{m.time}</time>
-                </div>
-                {m.replyTo && (
-                  <div className="reply-context">
-                    ↳{" "}
-                    {room.messages
-                      .find((x) => x.id === m.replyTo)
-                      ?.body.slice(0, 50) || "メッセージへの返信"}
+          <div className="chat-date">
+            {direct ? (
+              <>
+                <LockKeyhole size={12} />
+                あなたと{room.title}だけの会話
+              </>
+            ) : (
+              "京都・喫茶店と街歩き"
+            )}
+          </div>
+          {direct && !room.messages.length && !room.blocked && (
+            <div className="conversation-start">
+              <Avatar name={room.title} color={room.peer?.color} />
+              <h2>{room.title}との会話</h2>
+              <p>話したいテーマ：{room.peer?.interests.join("・")}</p>
+              <small>{room.peer?.availability}</small>
+              {room.peer?.interests.slice(0, 2).map((interest) => (
+                <button
+                  className="button subtle"
+                  key={interest}
+                  onClick={() =>
+                    setBody(
+                      "はじめまして。" +
+                        interest +
+                        "についてお話ししたいです。",
+                    )
+                  }
+                >
+                  {interest}の話をする
+                  <ArrowUpRight size={14} />
+                </button>
+              ))}
+            </div>
+          )}
+          {room.messages
+            .filter((m) => !direct || !room.blockedByMe || m.own)
+            .map((m) => (
+              <div className={"message " + (m.own ? "own" : "")} key={m.id}>
+                {!m.own && <Avatar name={m.author} small />}
+                <div className="message-main">
+                  <div className="message-author">
+                    {m.own ? "あなた" : m.author}
+                    <time>{m.time}</time>
                   </div>
-                )}
-                <div className="message-bubble">{m.body}</div>
-                <div className="message-actions">
-                  <button onClick={() => setReply(m.id)}>返信する</button>
-                  <button
-                    aria-label={m.author + "の投稿メニュー"}
-                    onClick={() => setMenu(menu === m.id ? "" : m.id)}
-                  >
-                    <MoreHorizontal size={15} />
-                  </button>
-                  {menu === m.id && (
-                    <>
-                      <button
-                        onClick={() => {
-                          setReport(m.id);
-                          setMenu("");
-                        }}
-                      >
-                        <Flag size={12} />
-                        通報
-                      </button>
-                      {!m.own && (
+                  {m.replyTo && (
+                    <div className="reply-context">
+                      ↳{" "}
+                      {room.messages
+                        .find((x) => x.id === m.replyTo)
+                        ?.body.slice(0, 50) || "メッセージへの返信"}
+                    </div>
+                  )}
+                  <div className="message-bubble">{m.body}</div>
+                  <div className="message-actions">
+                    <button onClick={() => setReply(m.id)}>返信する</button>
+                    <button
+                      aria-label={m.author + "の投稿メニュー"}
+                      onClick={() => setMenu(menu === m.id ? "" : m.id)}
+                    >
+                      <MoreHorizontal size={15} />
+                    </button>
+                    {menu === m.id && (
+                      <>
                         <button
-                          onClick={async () => {
-                            if (!guard()) return;
-                            try {
-                              if (data.mode === "production")
-                                await api("/blocks", {
-                                  method: "POST",
-                                  body: JSON.stringify({ messageId: m.id }),
-                                });
-                              setData((d) => ({
-                                ...d,
-                                rooms: d.rooms.map((r) => ({
-                                  ...r,
-                                  messages: r.messages.filter(
-                                    (x) => x.author !== m.author,
-                                  ),
-                                })),
-                              }));
-                              setMenu("");
-                              toast(m.author + "の投稿を非表示にしました");
-                            } catch (e) {
-                              toast((e as Error).message);
-                            }
+                          onClick={() => {
+                            setReport(m.id);
+                            setMenu("");
                           }}
                         >
-                          非表示にする
+                          <Flag size={12} />
+                          通報
                         </button>
-                      )}
-                    </>
-                  )}
+                        {!m.own && (
+                          <button
+                            onClick={async () => {
+                              if (direct) {
+                                setMenu("");
+                                setDetails(true);
+                                return;
+                              }
+                              if (!guard()) return;
+                              try {
+                                if (data.mode === "production")
+                                  await api("/blocks", {
+                                    method: "POST",
+                                    body: JSON.stringify({ messageId: m.id }),
+                                  });
+                                setData((d) => ({
+                                  ...d,
+                                  rooms: d.rooms.map((r) => ({
+                                    ...r,
+                                    messages: r.messages.filter(
+                                      (x) => x.author !== m.author,
+                                    ),
+                                  })),
+                                }));
+                                setMenu("");
+                                toast(m.author + "の投稿を非表示にしました");
+                              } catch (e) {
+                                toast((e as Error).message);
+                              }
+                            }}
+                          >
+                            {direct ? "ブロック" : "非表示にする"}
+                          </button>
+                        )}
+                      </>
+                    )}
+                  </div>
                 </div>
               </div>
-            </div>
-          ))}
+            ))}
           <div ref={end} />
         </div>
         <form className="chat-composer" onSubmit={send}>
@@ -1343,6 +1739,7 @@ function RoomDetail() {
               placeholder="近況や、次の旅のことを…"
               rows={1}
               maxLength={2000}
+              disabled={room.blocked}
               value={body}
               onChange={(e) => setBody(e.target.value)}
               onKeyDown={(e) => {
@@ -1355,14 +1752,42 @@ function RoomDetail() {
             <button
               className="send-button"
               aria-label="メッセージを送信"
-              disabled={!body.trim() || busy}
+              disabled={!body.trim() || busy || room.blocked}
             >
               <Send size={18} />
             </button>
           </div>
-          <small>この小部屋の参加者に共有されます</small>
+          <small>
+            {room.blocked
+              ? "この会話にはメッセージを送信できません"
+              : direct
+                ? "メッセージは相手だけに届きます"
+                : "この小部屋の参加者に共有されます"}
+          </small>
         </form>
       </div>
+      {details && direct && (
+        <Modal title="会話の設定" onClose={() => setDetails(false)}>
+          <p className="prose">
+            {room.title}
+            との1対1の会話です。ブロックすると、お互いにメッセージを送れなくなります。
+          </p>
+          <Link className="button subtle full" to={"/people/" + room.peer?.id}>
+            相手のプロフィール
+          </Link>
+          <button
+            className="button danger full"
+            disabled={busy || (!!room.blocked && !room.blockedByMe)}
+            onClick={room.blockedByMe ? unblockPeer : blockPeer}
+          >
+            {room.blockedByMe
+              ? "ブロックを解除する"
+              : room.blocked
+                ? "送信できません"
+                : "相手をブロックする"}
+          </button>
+        </Modal>
+      )}
       {report && (
         <Modal title="投稿を通報する" onClose={() => setReport("")}>
           <form onSubmit={submitReport}>
@@ -1634,7 +2059,7 @@ function Consult() {
           </div>
           <fieldset className="share-field">
             <legend>共有してよい自分の投稿（任意）</legend>
-            <small>小部屋全体の会話は共有しません。</small>
+            <small>相手のメッセージや会話全体は共有しません。</small>
             {data.rooms
               .flatMap((r) => r.messages.filter((m) => m.own))
               .map((m) => (
@@ -1797,6 +2222,7 @@ function ProfilePage() {
         <label className="field">
           自己紹介
           <textarea
+            aria-label="自己紹介"
             rows={3}
             maxLength={500}
             value={p.bio}
@@ -1862,6 +2288,19 @@ function ProfilePage() {
             </select>
           </label>
         </div>
+        <label className="conversation-opt-in">
+          <input
+            type="checkbox"
+            checked={!!p.acceptsMessages}
+            onChange={(e) => setP({ ...p, acceptsMessages: e.target.checked })}
+          />
+          <span>
+            <strong>新しい1対1の会話を受け付ける</strong>
+            <small>
+              オンにすると、名前・自己紹介・テーマ・話せる時間・訪問予定が会員の「話せる人」に表示されます。オフにしても、始めた会話は続けられます。
+            </small>
+          </span>
+        </label>
         <button className="button primary" disabled={busy}>
           {busy ? "保存中…" : "変更を保存"}
           <Check size={16} />

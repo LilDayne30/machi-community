@@ -8,6 +8,7 @@
 - publicリポジトリ [LilDayne30/machi-community](https://github.com/LilDayne30/machi-community) は作成済みです。ソースの送信はまだ完了していません。
 - Cloudflareの `Danaoki30@gmail.com's Account` に `machi-community` D1をアジア配置で作成しました。`wrangler.jsonc` はこのアカウントとDBへ設定済みです。
 - 本番D1の初期スキーマを適用し、18テーブル・7インデックス・会員0件を実SQLで確認しました。`d1_migrations` に `0001_initial.sql` の適用済み記録もあります。DBを再作成しないでください。
+- 1対1会話を追加する `0002_direct_conversations.sql` はローカルへ適用済みです。本番への追加適用はCLI認証後に `npm run db:remote` で行います。既存の小部屋や履歴を削除しません。
 - 配信先の設定は `https://machi-community.danaoki30.workers.dev` です。これは設定上の公開予定URLで、デプロイ済みという意味ではありません。
 - Google OAuthの設定は、Google Cloudの本人確認・多要素認証などの要件を満たしたアカウントで行ってください。
 - デプロイにはCLI認証と、Google OAuth / Stripe / Resendのruntime secretの設定が必要です。秘密情報はリポジトリへ保存しません。
@@ -106,6 +107,7 @@ npm run deploy
 3. 別のトークでStripeテスト決済。署名済みWebhookでのみ確定する。
 4. キャンセル・返金・開催リンク・返信メールが届く。
 5. 同じトークの4〜6人を小部屋へ割り当て、参加者だけが投稿を読める。
+   個人会話では双方が受付をオンにし、プロフィールからメッセージを往復する。同じ相手で履歴に戻れること、第三者の非開示、ブロック後の両者の送信拒否、受付オフでも既存の会話を継続できることを確認する。
 6. 事業者の会員を登録・確認し、相談者と指定事業者だけに相談が見える。
 7. 通報のAI分類と人による対応を確認する。
 

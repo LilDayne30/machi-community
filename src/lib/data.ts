@@ -38,6 +38,16 @@ export type Message = {
   own: boolean;
   replyTo?: string;
 };
+export type CommunityMember = {
+  id: string;
+  name: string;
+  bio: string;
+  relation: string;
+  interests: string[];
+  availability: string;
+  visitDate: string;
+  color?: string;
+};
 export type Room = {
   id: string;
   title: string;
@@ -46,6 +56,10 @@ export type Room = {
   members: number;
   unread: number;
   messages: Message[];
+  kind?: "direct" | "group";
+  peer?: CommunityMember;
+  blocked?: boolean;
+  blockedByMe?: boolean;
 };
 export type Booking = {
   id: string;
@@ -77,6 +91,7 @@ export type Profile = {
   visitDate: string;
   visitStatus?: number;
   availability: string;
+  acceptsMessages?: boolean;
 };
 export type Bootstrap = {
   mode: "preview" | "production";
@@ -85,6 +100,7 @@ export type Bootstrap = {
   talks: Talk[];
   notes: Note[];
   rooms: Room[];
+  people: CommunityMember[];
   bookings: Booking[];
   consultations: Consultation[];
   providers?: {
@@ -114,6 +130,38 @@ export const people: Person[] = [
   { name: "悠太", role: "最近訪れた", color: "#dce4d9", initial: "悠" },
   { name: "あかり", role: "進行役", color: "#ebdfd5", initial: "あ" },
   { name: "直樹", role: "最近訪れた", color: "#d7e3e8", initial: "直" },
+];
+export const communityPeople: CommunityMember[] = [
+  {
+    id: "misaki",
+    name: "美咲",
+    bio: "京都に住んでいます。朝の喫茶店と、鴨川沿いの散歩が好きです。お店の話から気軽にどうぞ。",
+    relation: "住んでいる",
+    interests: ["喫茶店", "街歩き"],
+    availability: "土日の夜",
+    visitDate: "",
+    color: "#e3d8c7",
+  },
+  {
+    id: "yuta",
+    name: "悠太",
+    bio: "年に何度か京都へ。本とコーヒーのある場所を、ゆっくり探しています。次の旅の話もできたら。",
+    relation: "再訪予定",
+    interests: ["古本屋", "喫茶店"],
+    availability: "平日の夜",
+    visitDate: "2026-11-20",
+    color: "#dce4d9",
+  },
+  {
+    id: "akari",
+    name: "あかり",
+    bio: "京都で暮らしながら写真を撮っています。東山の小道や、静かな朝の時間について話せます。",
+    relation: "住んでいる",
+    interests: ["写真", "街歩き"],
+    availability: "不定期・都度相談",
+    visitDate: "",
+    color: "#ebdfd5",
+  },
 ];
 export const talks: Talk[] = [
   {
@@ -202,6 +250,44 @@ export const notes: Note[] = [
 ];
 export const rooms: Room[] = [
   {
+    id: "dm-misaki",
+    kind: "direct",
+    peer: communityPeople[0],
+    title: "美咲",
+    subtitle: "喫茶店・街歩き",
+    image: "",
+    members: 2,
+    unread: 1,
+    messages: [
+      {
+        id: "dm-m1",
+        author: "美咲",
+        body: "次に京都に来るのはいつごろですか？この前話した喫茶店、朝の時間が気持ちよかったです ☕",
+        time: "10:24",
+        own: false,
+      },
+    ],
+  },
+  {
+    id: "dm-yuta",
+    kind: "direct",
+    peer: communityPeople[1],
+    title: "悠太",
+    subtitle: "古本屋・喫茶店",
+    image: "",
+    members: 2,
+    unread: 0,
+    messages: [
+      {
+        id: "dm-y1",
+        author: "悠太",
+        body: "教えてもらった古本屋へ行ってきました。今度また、見つけた本の話をしたいです。",
+        time: "昨日",
+        own: false,
+      },
+    ],
+  },
+  {
     id: "r1",
     title: "京都の喫茶と、街歩き",
     subtitle: "10月の地域トークの小部屋",
@@ -258,6 +344,7 @@ export const emptyProfile: Profile = {
   visitDate: "",
   visitStatus: 0,
   availability: "土日の夜",
+  acceptsMessages: false,
 };
 export const providers = [
   {
