@@ -1,0 +1,6 @@
+#!/bin/sh
+case "$2" in
+  https://LilDayne30@github.com/LilDayne30/machi-community.git|https://github.com/LilDayne30/machi-community.git|git@github.com:LilDayne30/machi-community.git) ;;
+  *) echo 'Pushを中止：公開先はLilDayne30/machi-communityのみです。' >&2; exit 1 ;;
+esac
+node scripts/check-github-account.mjs

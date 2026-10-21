@@ -1,0 +1,11 @@
+# Copy to .dev.vars for LOCAL development only. Never commit secrets.
+APP_ENV=development
+DEMO_MODE=true
+APP_ORIGIN=http://127.0.0.1:5173
+GOOGLE_CLIENT_ID=
+GOOGLE_CLIENT_SECRET=
+STRIPE_SECRET_KEY=
+STRIPE_WEBHOOK_SECRET=
+RESEND_API_KEY=
+EMAIL_FROM=
+ADMIN_EMAIL=danaoki30@gmail.com

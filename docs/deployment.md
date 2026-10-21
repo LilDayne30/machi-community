@@ -1,0 +1,111 @@
+# 公開手順
+
+本番の会員データを扱うため、GitHub・Cloudflare・Google・Stripe・メール送信元の接続設定が必要です。秘密情報は `.dev.vars` または `wrangler secret put` に入力し、Git・チャット・画面のURLへ含めません。
+
+## 1. GitHub
+
+`gh` を認証し、本人がOAuthの承認を完了します。
+
+```sh
+gh auth login --hostname github.com --git-protocol https --web --scopes user:email
+npm run publish:github
+```
+
+スクリプトは `gh api user` と `gh api user/emails` を取得し、`LilDayne30` / `danaoki30@gmail.com`（確認済み）以外での作成・Pushを止めます。作成するリポジトリはpublicです。既存の別アカウントのGit認証設定は変更しません。GitHub CLIの場所が標準PATH以外なら `GH_CLI_EXECUTABLE` に絶対パスを設定します。
+
+## 2. Cloudflare
+
+```sh
+npx wrangler login
+npx wrangler d1 create machi-community --location apac
+```
+
+返されたdatabase_idを `wrangler.jsonc` に設定します。Cloudflareアカウントのworkers.devサブドメインを確認し、`vars.APP_ORIGIN` を `https://machi-community.<subdomain>.workers.dev` にします。カスタムドメインの場合はそのオリジンを設定してください。末尾のスラッシュは不要です。
+
+`vars.APP_ENV=production`、`vars.DEMO_MODE=false` を維持します。ローカルの `.dev.vars` は公開されません。`ADMIN_EMAIL` をsecretとして `danaoki30@gmail.com` に設定します。
+
+```sh
+npx wrangler secret put ADMIN_EMAIL
+npm run db:remote
+```
+
+本番マイグレーションにはテスト会員・固定セッション・架空の店舗は含まれません。
+
+## 3. Google認証
+
+Google Cloud ConsoleでWebアプリ用OAuthクライアントを作成します。必要なスコープは `openid email profile` だけです。
+
+- 承認済みJavaScript生成元：`APP_ORIGIN` と同じHTTPSオリジン。
+- 承認済みリダイレクトURI：`https://<公開ドメイン>/api/auth/callback`。
+- OAuth同意画面がテスト中の場合は、利用者をテストユーザーに登録します。
+
+```sh
+npx wrangler secret put GOOGLE_CLIENT_ID
+npx wrangler secret put GOOGLE_CLIENT_SECRET
+```
+
+最初に `ADMIN_EMAIL` のGoogleアカウントでログインすると運営者になります。他の新規会員は事前招待が必要です。「運営管理 → 募集・招待」からメールアドレスを登録してください。招待の有効期間は30日です。招待メールは自動送信せず、運営者がアプリURLを本人へ共有します。
+
+認証は認可コード＋PKCE、state、nonce、Googleの公開鍵、issuer、audience、email_verifiedを検証します。セッションはランダム値をHttpOnly / Secure / SameSite=Lax Cookieへ入れ、DBにはそのSHA-256だけを保存します。
+
+## 4. Stripe
+
+Stripeのテストモードで接続し、確認後に本番キーへ切り替えます。
+
+```sh
+npx wrangler secret put STRIPE_SECRET_KEY
+npx wrangler secret put STRIPE_WEBHOOK_SECRET
+```
+
+Webhookは `APP_ORIGIN/api/stripe/webhook` に設定し、次を購読します。
+
+- `checkout.session.completed`
+- `checkout.session.expired`
+
+Checkoutはカード払い、JPY固定です。Webhookの署名と時刻、Checkout Session ID、会員ID、予約ID、金額、通貨、入金状態を照合し、入金通知の受信後に参加確定します。戻りURLでは確定しません。StripeイベントIDと冪等キーで重複確定・重複返金を防ぎます。
+
+有料予約は30分間の仮押さえです。遅れて届いた入金は返金待ちにし、Cronが返金します。開始24時間前までのキャンセルは全額返金、それ以降は返金なしです。運営都合で中止した場合の一括キャンセルは、現段階では個別予約の確認と手動対応が必要です。
+
+## 5. メール
+
+Resendで送信ドメインを認証し、APIキーと送信元を設定します。
+
+```sh
+npx wrangler secret put RESEND_API_KEY
+npx wrangler secret put EMAIL_FROM
+```
+
+D1 outboxへ通知を蓄積し、15分間隔のCronで再試行します。初期構成のメール通知は即時配信を保証しません。「開催・メール」からの会議リンク送信は配信処理を即実行します。配送が失敗した通知はoutboxに残ります。5回失敗した通知は運営で確認して再投入します。
+
+## 6. Workers AI
+
+`wrangler.jsonc` の `ai.binding=AI` を使用します。モデルは `@cf/meta/llama-3.3-70b-instruct-fp8-fast`。通報画面の明示操作で最大10件を分類し、JSONをZodで検証します。出力はテーマと確認候補で、通報対応状態は自動変更しません。一般利用者にAIを直接公開していません。
+
+## 7. デプロイと運営開始
+
+```sh
+npm run test:all
+npm run deploy
+```
+
+公開用D1 ID・HTTPSオリジン・production設定がない場合、`deploy` は停止します。設定後に生成されたworkers.dev URLで以下を実機確認します。
+
+1. 招待されたGoogleアカウントでログイン。未招待アカウントは拒否される。
+2. 運営者が未来のトークを募集し、無料の初回予約ができる。
+3. 別のトークでStripeテスト決済。署名済みWebhookでのみ確定する。
+4. キャンセル・返金・開催リンク・返信メールが届く。
+5. 同じトークの4〜6人を小部屋へ割り当て、参加者だけが投稿を読める。
+6. 事業者の会員を登録・確認し、相談者と指定事業者だけに相談が見える。
+7. 通報のAI分類と人による対応を確認する。
+
+GitHub Actionsで公開する場合はproduction環境に `CLOUDFLARE_API_TOKEN` と `CLOUDFLARE_ACCOUNT_ID` を登録し、「Deploy to Cloudflare」を手動実行します。OAuth・Stripe・メールのruntime secretは、先にCloudflare側へ設定してください。
+
+## 検証指標と運用上の境界
+
+- 再接点：同じ小部屋で最初の投稿から14日以上後に再投稿し、別参加者の直近投稿がある参加者を集計。厳密な同一相手との相互再接触は、投稿と参加履歴を人が照合してください。
+- 予約・有料需要：bookingsに初回無料／有料金額、入金待ち／確定／参加／返金の状態を保持。
+- 住民の継続：users.profile.relationと参加記録を照合。進行役はトークのhost・運営記録と分けて確認。
+- プロ相談：送信・受諾・有料成立を運営が更新。サービス代金の徴収や自動送金は行わない。
+- 採算：参加費と原価を記録。決済費・謝礼・調整人件費は手入力。会計ソフトとの自動連携はしない。
+- 会話更新：小規模運用では12秒ごとの取得を採用。利用量が増えたらDurable Objects / WebSocketへ移行可能。
+- PWA：静的ファイルのみキャッシュ。ログイン、会話、相談、予約はオフラインで開示・送信しない。
