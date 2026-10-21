@@ -8,7 +8,7 @@
 - publicリポジトリ [LilDayne30/machi-community](https://github.com/LilDayne30/machi-community) は作成済みです。ソースの送信はまだ完了していません。
 - Cloudflareの `Danaoki30@gmail.com's Account` に `machi-community` D1をアジア配置で作成しました。`wrangler.jsonc` はこのアカウントとDBへ設定済みです。
 - 本番D1の初期スキーマを適用し、18テーブル・7インデックス・会員0件を実SQLで確認しました。`d1_migrations` に `0001_initial.sql` の適用済み記録もあります。DBを再作成しないでください。
-- 1対1会話を追加する `0002_direct_conversations.sql` はローカルへ適用済みです。本番への追加適用はCLI認証後に `npm run db:remote` で行います。既存の小部屋や履歴を削除しません。
+- 1対1会話を追加する `0002_direct_conversations.sql` はローカル・本番へ適用済みです。本番でも追加テーブル・3つのトリガー・移行履歴を読み戻しました。今後の未適用分は `npm run db:remote` で適用します。既存の小部屋や履歴を引き継ぎます。
 - 配信先の設定は `https://machi-community.danaoki30.workers.dev` です。これは設定上の公開予定URLで、デプロイ済みという意味ではありません。
 - Google OAuthの設定は、Google Cloudの本人確認・多要素認証などの要件を満たしたアカウントで行ってください。
 - デプロイにはCLI認証と、Google OAuth / Stripe / Resendのruntime secretの設定が必要です。秘密情報はリポジトリへ保存しません。
