@@ -20,11 +20,13 @@
 `gh` を認証し、本人がOAuthの承認を完了します。
 
 ```sh
-gh auth login --hostname github.com --git-protocol https --web --scopes user:email
+gh auth login --hostname github.com --git-protocol https --web --scopes user:email,workflow
 npm run publish:github
 ```
 
 スクリプトは `gh api user` と `gh api user/emails` を取得し、`LilDayne30` / `danaoki30@gmail.com`（確認済み）以外での作成・Pushを止めます。作成するリポジトリはpublicです。既存の別アカウントのGit認証設定は変更しません。GitHub CLIの場所が標準PATH以外なら `GH_CLI_EXECUTABLE` に絶対パスを設定します。
+
+CI・デプロイのワークフローファイルも含むため、GitHubは `workflow` 権限を要求します。既存のCLI認証にこの権限がない場合は `gh auth refresh --hostname github.com --scopes workflow` を実行し、本人が追加承認してください。承認前のPushはGitHubが拒否します。
 
 ## 2. Cloudflare
 
