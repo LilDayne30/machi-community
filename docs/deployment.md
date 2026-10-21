@@ -2,6 +2,18 @@
 
 本番の会員データを扱うため、GitHub・Cloudflare・Google・Stripe・メール送信元の接続設定が必要です。秘密情報は `.dev.vars` または `wrangler secret put` に入力し、Git・チャット・画面のURLへ含めません。
 
+## 現在の準備状況（2026年10月22日）
+
+- GitHubの `LilDayne30` と、確認済みメール `danaoki30@gmail.com` の一致をブラウザで確認済みです。
+- publicリポジトリ [LilDayne30/machi-community](https://github.com/LilDayne30/machi-community) は作成済みです。ソースの送信はまだ完了していません。
+- Cloudflareの `Danaoki30@gmail.com's Account` に `machi-community` D1をアジア配置で作成しました。`wrangler.jsonc` はこのアカウントとDBへ設定済みです。
+- 本番D1の初期スキーマを適用し、18テーブル・7インデックス・会員0件を実SQLで確認しました。`d1_migrations` に `0001_initial.sql` の適用済み記録もあります。DBを再作成しないでください。
+- 配信先の設定は `https://machi-community.danaoki30.workers.dev` です。これは設定上の公開予定URLで、デプロイ済みという意味ではありません。
+- Google OAuthの設定は、Google Cloudの本人確認・多要素認証などの要件を満たしたアカウントで行ってください。
+- デプロイにはCLI認証と、Google OAuth / Stripe / Resendのruntime secretの設定が必要です。秘密情報はリポジトリへ保存しません。
+
+以下は接続を完了する手順です。すでに作成したリポジトリやD1を重複作成しないでください。
+
 ## 1. GitHub
 
 `gh` を認証し、本人がOAuthの承認を完了します。

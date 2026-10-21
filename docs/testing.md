@@ -56,3 +56,13 @@ Codexの実ブラウザでも390px幅の表示と、トーク詳細→確認→�
 Google・Stripe・メール・Workers AIの秘密情報は未設定です。これらを接続済み・検証済みとして扱ってはいません。
 
 スクリーンショット：[PC](screenshots/home-desktop.png)、[スマホ](screenshots/home-mobile.png)。
+
+## 本番リソースの準備後に確認したこと
+
+GitHubの所有者・メールの一致とpublicリポジトリの作成をブラウザで確認しました。コード送信とGitHub Actionsの実行は未完了です。
+
+Cloudflareに新規作成したD1へ本番スキーマを適用し、実SQLで18テーブル・7インデックス・会員0件を読み戻しました。`0001_initial.sql` の移行履歴も読み戻しています。
+
+アカウントID・D1 ID・公開予定オリジンの設定を更新した後、`npm test -- --project connected-ui --project worker-api` で接続テスト23/23件が合格しました。画面・API・テストの実装コードは、先の64件合格時から変更していません。
+
+本番Workerのデプロイや実Googleログインは、接続情報の設定後に別途確認する項目です。完了したとは扱っていません。
