@@ -280,7 +280,12 @@ test("実API：国籍・街・興味・写真を登録し、その情報で見�
   ]);
   await page.goto("/profile");
   await page.getByLabel("国籍（必須）", { exact: true }).fill("台湾");
-  await page.getByLabel("街（任意）", { exact: true }).fill("台北");
+  await page
+    .getByRole("combobox", { name: "現在の居住地の国・地域", exact: true })
+    .selectOption("country:TW");
+  await page
+    .getByRole("combobox", { name: "現在の居住地の街（任意）", exact: true })
+    .selectOption("city:TW:taipei");
   await page
     .getByLabel("興味のある国・地域", { exact: true })
     .fill("日本、京都、韓国");
@@ -339,4 +344,86 @@ test("実API：国籍・街・興味・写真を登録し、その情報で見�
     .getByRole("button", { name: "メッセージを送信", exact: true })
     .click();
   await expect(page.locator(".message.own")).toContainText("台湾と日本");
+});
+
+test("実API：居住地域と過去の留学を保存し、経験のある相手として見つけて話す", async ({
+  page,
+  context,
+}) => {
+  await context.addCookies([
+    { name: "machi_session", value: "e2e-rui", domain: "127.0.0.1", path: "/" },
+  ]);
+  await page.goto("/profile");
+  await page
+    .getByRole("combobox", { name: "現在の居住地の国・地域", exact: true })
+    .selectOption("country:JP");
+  await page
+    .getByRole("combobox", { name: "現在の居住地の街（任意）", exact: true })
+    .selectOption("city:JP:tokyo");
+  await page
+    .getByRole("button", { name: "過去の居住地・滞在先を追加", exact: true })
+    .click();
+  await page
+    .getByRole("combobox", { name: "地域 1の国・地域", exact: true })
+    .selectOption("country:TW");
+  await page
+    .getByRole("combobox", { name: "地域 1の街（任意）", exact: true })
+    .selectOption("city:TW:taipei");
+  await page
+    .getByRole("combobox", { name: "地域 1での目的", exact: true })
+    .selectOption("study");
+  await page.getByLabel("地域 1の開始年", { exact: true }).fill("2019");
+  await page.getByLabel("地域 1の終了年", { exact: true }).fill("2022");
+  await page
+    .getByRole("combobox", { name: "次の訪問先の国・地域", exact: true })
+    .selectOption("country:KR");
+  await page
+    .getByRole("combobox", { name: "次の訪問先の街（任意）", exact: true })
+    .selectOption("city:KR:seoul");
+  await page.getByLabel("新しい1対1の会話を受け付ける").check();
+  await page.getByRole("button", { name: "変更を保存", exact: true }).click();
+  await expect(page.getByRole("status")).toContainText("保存しました");
+  await page.reload();
+  await expect(
+    page.getByRole("combobox", { name: "地域 1の街（任意）", exact: true }),
+  ).toHaveValue("city:TW:taipei");
+  const saved = await (await context.request.get("/api/bootstrap")).json();
+  expect(saved.profile.connections).toEqual(
+    expect.arrayContaining([
+      expect.objectContaining({ regionId: "city:JP:tokyo", status: "current" }),
+      {
+        regionId: "city:TW:taipei",
+        status: "former",
+        purpose: "study",
+        since: 2019,
+        until: 2022,
+      },
+    ]),
+  );
+  expect(saved.profile.city).toBe("東京");
+  expect(saved.profile.visitRegionId).toBe("city:KR:seoul");
+  await context.addCookies([
+    { name: "machi_session", value: "e2e-dc", domain: "127.0.0.1", path: "/" },
+  ]);
+  await page.goto("/people");
+  await page
+    .getByRole("combobox", { name: "関わりのある地域", exact: true })
+    .selectOption("country:TW");
+  await page
+    .getByRole("combobox", { name: "地域との関わり", exact: true })
+    .selectOption("former");
+  await expect(page.locator(".person-card")).toHaveCount(1);
+  await expect(page.locator(".person-card")).toContainText("地域のテストさん");
+  await expect(page.locator(".person-card")).toContainText("以前住んでいた");
+  await page
+    .getByRole("button", { name: "地域のテストさん メッセージ", exact: true })
+    .click();
+  await expect(page.locator(".chat-header h1")).toHaveText("地域のテストさん");
+  await page
+    .getByRole("textbox", { name: "メッセージ", exact: true })
+    .fill("台北に留学したときの街の話を聞きたいです");
+  await page
+    .getByRole("button", { name: "メッセージを送信", exact: true })
+    .click();
+  await expect(page.locator(".message.own")).toContainText("台北に留学");
 });

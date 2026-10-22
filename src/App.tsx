@@ -50,6 +50,19 @@ import { api, saveProfile, useApp } from "./lib/store";
 import { matchesMember, normalizePlace, parseRegions } from "./lib/profile";
 import { photoDataUrl, prepareProfilePhoto } from "./lib/photo";
 import {
+  getRegion,
+  regionLabel,
+  regions as regionCatalog,
+  residenceLabels,
+  connectionError,
+  connectionLabel,
+} from "./lib/regions";
+import {
+  RegionPicker,
+  ResidenceEditor,
+  ResidenceLinks,
+} from "./components/regions";
+import {
   dateLabel,
   emptyProfile,
   photos,
@@ -111,8 +124,8 @@ export default function App() {
             <MapPin size={18} />
           </span>
           <div>
-            <strong>京都</strong>
-            <small>喫茶店と街歩き</small>
+            <strong>話せる人</strong>
+            <small>国・地域から探す</small>
           </div>
           <LockKeyhole size={13} />
         </div>
@@ -168,7 +181,7 @@ export default function App() {
           <div className="breadcrumb">
             <span>コミュニティ</span>
             <ChevronRight size={13} />
-            <span>京都</span>
+            <span>話せる人</span>
           </div>
           <Link to="/" className="mobile-brand">
             machi<span>.</span>
@@ -176,7 +189,7 @@ export default function App() {
           <div className="topbar-right">
             <span className="community-tag">
               <span className="live-dot" />
-              京都コミュニティ
+              招待制コミュニティ
             </span>
             <button
               className="icon-button notification-button"
@@ -252,7 +265,7 @@ export default function App() {
             <span>
               machi<span className="brand-dot">.</span>
             </span>
-            <small>京都・喫茶店と街歩き</small>
+            <small>地域と1対1の会話</small>
             <span className="footer-status">
               <span className="live-dot" />
               招待制
@@ -364,7 +377,7 @@ function Home() {
       </Heading>
       {search && (
         <div className="search-panel glass">
-          <label htmlFor="local-search">京都の話題・メモを検索</label>
+          <label htmlFor="local-search">話題・メモを検索</label>
           <div className="search-input">
             <Search size={17} />
             <input
@@ -384,45 +397,34 @@ function Home() {
               <X size={17} />
             </button>
           </div>
-          <small>初期コミュニティは京都のみです。</small>
         </div>
       )}
-      <section className="region-hero">
-        <img
-          src={photos.kyoto}
-          alt="京都・東山の街並み"
-          className="hero-image"
-        />
-        <div className="hero-shade" />
-        <div className="hero-meta">
-          <span className="hero-chip">
-            <MapPin size={13} /> 京都府 京都市
-          </span>
-          <span className="hero-chip transparent">
-            <LockKeyhole size={12} />
-            招待制
-          </span>
+      <section className="home-discovery glass" aria-label="地域から人を探す">
+        <div className="discovery-globe" aria-hidden="true">
+          <Globe2 size={74} strokeWidth={0.8} />
         </div>
-        <div className="hero-bottom">
-          <div>
-            <div className="hero-kicker">KYOTO</div>
-            <h2>
-              京都<span>喫茶店と街歩き</span>
-            </h2>
-            <div className="hero-members">
-              <People people={data.talks[0]?.participants || []} />
-              <span>再訪する人と、この街に暮らす人</span>
-            </div>
+        <div>
+          <h2>地域から人を探す</h2>
+          <div className="home-residence-shortcuts">
+            <Link to="/people?status=current">
+              <MapPin size={15} />
+              今住んでいる人
+              <ArrowUpRight size={14} />
+            </Link>
+            <Link to="/people?status=former">
+              <MapPin size={15} />
+              住んだことがある人
+              <ArrowUpRight size={14} />
+            </Link>
           </div>
-          <Link
-            className="hero-action glass"
-            to="/people"
-            aria-label="京都で話せる人を見る"
-          >
-            <ArrowUpRight size={23} />
-          </Link>
+          {data.profile.interestedRegions.length > 0 && (
+            <RegionLinks regions={data.profile.interestedRegions} />
+          )}
         </div>
-        <span className="hero-credit">HIGASHIYAMA, KYOTO</span>
+        <Link to="/people" className="button subtle small-button">
+          話せる人を見る
+          <ArrowUpRight size={17} />
+        </Link>
       </section>
       <section className="home-people">
         <SectionTitle title="話せる人" to="/people" />
@@ -514,9 +516,7 @@ function Home() {
               </span>
               <h3>このコミュニティについて</h3>
             </div>
-            <p>
-              喫茶店と街歩きをテーマに、京都の住民と再訪者が交流する小さなコミュニティです。
-            </p>
+            <p>テーマと日時を決めて、住民や旅行経験者と少人数で話せます。</p>
             <div>
               <span>
                 <Users size={14} />
@@ -595,6 +595,7 @@ function TripCard() {
     ),
     [editing, setEditing] = useState(false),
     [date, setDate] = useState(data.profile.visitDate),
+    [visitRegionId, setVisitRegionId] = useState(data.profile.visitRegionId),
     start = useRef(0);
   async function move(delta: number) {
     if (!guard()) return;
@@ -616,7 +617,7 @@ function TripCard() {
     e.preventDefault();
     if (!guard()) return;
     try {
-      const p = { ...data.profile, visitDate: date };
+      const p = { ...data.profile, visitDate: date, visitRegionId };
       await saveProfile(p, data.mode);
       setData((d) => ({ ...d, profile: p }));
       setEditing(false);
@@ -639,7 +640,8 @@ function TripCard() {
         <MapPin size={17} />
       </div>
       <div className="trip-city">
-        京都<small>次の訪問</small>
+        {regionLabel(data.profile.visitRegionId) || "訪問先未登録"}
+        <small>次の訪問</small>
       </div>
       <div className="trip-date">
         {data.profile.visitDate
@@ -683,6 +685,11 @@ function TripCard() {
       {editing && (
         <Modal title="次の訪問予定" onClose={() => setEditing(false)}>
           <form onSubmit={submit}>
+            <RegionPicker
+              label="訪問先"
+              value={visitRegionId}
+              onChange={setVisitRegionId}
+            />
             <label className="field">
               訪問予定日
               <input
@@ -930,7 +937,7 @@ function TalkDetail() {
             </div>
             <h2>当日の流れ</h2>
             <ol>
-              <li>自己紹介と、最近の京都の話</li>
+              <li>自己紹介と、最近の地域の話</li>
               <li>テーマについて少人数で話す</li>
               <li>次の訪問や、旅のあとも小部屋で会話を続ける</li>
             </ol>
@@ -1155,7 +1162,10 @@ function MemberCard({ person }: { person: CommunityMember }) {
           <h3>{person.name}</h3>
           <span>
             <MapPin size={12} />
-            {person.relation}
+            {regionLabel(
+              person.connections.find((c) => c.status === "current")
+                ?.regionId || "",
+            ) || "地域未登録"}
           </span>
         </div>
         <ChevronRight size={16} />
@@ -1167,6 +1177,7 @@ function MemberCard({ person }: { person: CommunityMember }) {
           {person.city && " · " + person.city}
         </span>
       </div>
+      <ResidenceLinks connections={person.connections} compact />
       <div className="person-interests">
         {person.interests.map((interest) => (
           <span key={interest}>{interest}</span>
@@ -1207,7 +1218,19 @@ function Members() {
     [theme, setTheme] = useState("すべて"),
     [params, setParams] = useSearchParams();
   const nationality = params.get("nationality") || "",
-    region = params.get("region") || "";
+    region = params.get("region") || "",
+    place = params.get("place") || "",
+    status = params.get("status") || "";
+  const placeIds = new Set(
+    data.people.flatMap((p) =>
+      p.connections.flatMap((c) =>
+        [c.regionId, getRegion(c.regionId)?.parentId].filter(
+          (s): s is string => !!s,
+        ),
+      ),
+    ),
+  );
+  const places = regionCatalog.filter((r) => placeIds.has(r.id));
   const countries = [
     ...new Set(data.people.map((p) => p.nationality).filter(Boolean)),
   ].sort((a, b) => a.localeCompare(b, "ja"));
@@ -1223,11 +1246,11 @@ function Members() {
     });
   }
   const list = data.people.filter((p) =>
-    matchesMember(p, query, nationality, region, theme),
+    matchesMember(p, query, nationality, region, theme, place, status),
   );
   return (
     <>
-      <Heading eyebrow="PEOPLE IN KYOTO" title="話せる人">
+      <Heading eyebrow="PEOPLE" title="話せる人">
         <span className="pill">
           <MessageCircle size={14} />
           1対1の会話
@@ -1270,6 +1293,36 @@ function Members() {
             </select>
           </label>
         </div>
+        <div className="form-row discovery-filters residence-discovery">
+          <label className="field">
+            関わりのある地域
+            <select
+              value={place}
+              onChange={(e) => filter("place", e.target.value)}
+            >
+              <option value="">すべての地域</option>
+              {places.map((r) => (
+                <option key={r.id} value={r.id}>
+                  {regionLabel(r.id)}
+                </option>
+              ))}
+            </select>
+          </label>
+          <label className="field">
+            地域との関わり
+            <select
+              value={status}
+              onChange={(e) => filter("status", e.target.value)}
+            >
+              <option value="">すべての関わり</option>
+              {Object.entries(residenceLabels).map(([value, label]) => (
+                <option key={value} value={value}>
+                  {label}
+                </option>
+              ))}
+            </select>
+          </label>
+        </div>
         {data.profile.interestedRegions.length > 0 && (
           <div className="my-region-filters">
             <span>あなたの興味から探す</span>
@@ -1299,7 +1352,12 @@ function Members() {
         </div>
         <div className="people-result-count">
           <span>{list.length}人</span>
-          {(query || nationality || region || theme !== "すべて") && (
+          {(query ||
+            nationality ||
+            region ||
+            place ||
+            status ||
+            theme !== "すべて") && (
             <button
               onClick={() => {
                 setQuery("");
@@ -1363,7 +1421,12 @@ function MemberDetail() {
           />
           <span className="pill">
             <MapPin size={13} />
-            京都・{person.relation}
+            {person.connections[0]
+              ? connectionLabel(
+                  person.connections.find((c) => c.status === "current") ||
+                    person.connections[0],
+                )
+              : "地域未登録"}
           </span>
         </div>
         <h1>{person.name}</h1>
@@ -1384,6 +1447,14 @@ function MemberDetail() {
             <span key={s}>{s}</span>
           ))}
         </div>
+        <section className="member-regions">
+          <h2>地域との関わり</h2>
+          {person.connections.length ? (
+            <ResidenceLinks connections={person.connections} />
+          ) : (
+            <p className="muted">まだ登録されていません</p>
+          )}
+        </section>
         <section className="member-regions">
           <h2>興味のある国・地域</h2>
           {person.interestedRegions.length ? (
@@ -1406,7 +1477,10 @@ function MemberDetail() {
           {person.visitDate && (
             <>
               <dt>次の訪問</dt>
-              <dd>{dateLabel(person.visitDate)}</dd>
+              <dd>
+                {regionLabel(person.visitRegionId)}{" "}
+                {dateLabel(person.visitDate)}
+              </dd>
             </>
           )}
         </dl>
@@ -1780,7 +1854,7 @@ function RoomDetail() {
                 あなたと{room.title}だけの会話
               </>
             ) : (
-              "京都・喫茶店と街歩き"
+              "地域トークの小部屋"
             )}
           </div>
           {direct && !room.messages.length && !room.blocked && (
@@ -2357,6 +2431,11 @@ function ProfilePage() {
       toast("国籍を入力してください");
       return;
     }
+    const residenceError = connectionError(p.connections);
+    if (residenceError) {
+      toast(residenceError);
+      return;
+    }
     if (
       interestedRegions.length > 12 ||
       interestedRegions.some((s) => s.length > 60)
@@ -2454,7 +2533,12 @@ function ProfilePage() {
           />
           <div>
             <h2>{p.name || "プロフィール設定"}</h2>
-            <span className="pill">京都コミュニティ</span>
+            <span className="pill">
+              {regionLabel(
+                p.connections.find((c) => c.status === "current")?.regionId ||
+                  "",
+              ) || "居住地域は任意で登録"}
+            </span>
           </div>
         </div>
         <div className="profile-photo-controls">
@@ -2519,16 +2603,29 @@ function ProfilePage() {
               onChange={(e) => setP({ ...p, nationality: e.target.value })}
             />
           </label>
-          <label className="field">
-            街（任意）
-            <input
-              maxLength={80}
-              value={p.city}
-              placeholder="例：京都、台北"
-              onChange={(e) => setP({ ...p, city: e.target.value })}
-            />
-          </label>
         </div>
+        {p.city && !p.connections.some((c) => c.status === "current") && (
+          <p className="legacy-city muted">
+            以前登録した街：{p.city}。居住地域を選ぶと地域に紐づきます。
+          </p>
+        )}
+        <ResidenceEditor
+          value={p.connections}
+          onChange={(connections) => {
+            const current = connections.find((c) => c.status === "current"),
+              r = current && getRegion(current.regionId);
+            setP({
+              ...p,
+              connections,
+              city:
+                r?.kind === "city"
+                  ? r.name
+                  : current || p.connections.some((c) => c.status === "current")
+                    ? ""
+                    : p.city,
+            });
+          }}
+        />
         <label className="field">
           興味のある国・地域
           <textarea
@@ -2555,19 +2652,6 @@ function ProfilePage() {
             placeholder="好きなことや、この街との思い出"
           />
         </label>
-        <label className="field">
-          京都との関わり
-          <select
-            value={p.relation}
-            onChange={(e) => setP({ ...p, relation: e.target.value })}
-          >
-            {["住んでいる", "最近訪れた", "再訪予定", "留学している"].map(
-              (s) => (
-                <option key={s}>{s}</option>
-              ),
-            )}
-          </select>
-        </label>
         <div className="field">
           <span>興味・話せるテーマ</span>
           <div className="filter-row">
@@ -2589,6 +2673,11 @@ function ProfilePage() {
             ))}
           </div>
         </div>
+        <RegionPicker
+          label="次の訪問先"
+          value={p.visitRegionId}
+          onChange={(visitRegionId) => setP({ ...p, visitRegionId })}
+        />
         <div className="form-row">
           <label className="field">
             次の訪問予定
@@ -2622,7 +2711,7 @@ function ProfilePage() {
           <span>
             <strong>新しい1対1の会話を受け付ける</strong>
             <small>
-              オンにすると、国籍・街・興味のある国や地域・写真を含むプロフィールが会員の「話せる人」に表示されます。オフにしても、始めた会話は続けられます。
+              オンにすると、国籍・居住／滞在歴・興味のある国や地域・写真を含むプロフィールが会員の「話せる人」に表示されます。オフにしても、始めた会話は続けられます。
             </small>
           </span>
         </label>

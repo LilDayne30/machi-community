@@ -37,9 +37,12 @@ function upgradeMember(person: CommunityMember): CommunityMember {
   return {
     ...person,
     nationality: person.nationality ?? seed?.nationality ?? "",
-    city: person.city ?? seed?.city ?? "",
+    city: !person.connections && seed ? seed.city : (person.city ?? ""),
+    bio: !person.connections && seed ? seed.bio : person.bio,
     interestedRegions:
       person.interestedRegions ?? seed?.interestedRegions ?? [],
+    connections: person.connections ?? seed?.connections ?? [],
+    visitRegionId: person.visitRegionId ?? seed?.visitRegionId ?? "",
   };
 }
 export async function api<T>(path: string, init?: RequestInit): Promise<T> {

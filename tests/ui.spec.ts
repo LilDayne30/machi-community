@@ -1,5 +1,6 @@
 import { test, expect } from "@playwright/test";
 import AxeBuilder from "@axe-core/playwright";
+import { emptyProfile } from "../src/lib/data";
 test.beforeEach(async ({ page }) => {
   await page.goto("/");
   await expect(
@@ -11,7 +12,7 @@ test("ホーム・画像・レスポンシブ・主要画面の2タップ導線"
 }, info) => {
   const errors: string[] = [];
   page.on("pageerror", (e) => errors.push(e.message));
-  await expect(page.locator(".region-hero img")).toBeVisible();
+  await expect(page.locator(".home-discovery")).toBeVisible();
   await expect(page.locator(".talk-card")).toHaveCount(1);
   expect(
     await page.evaluate(() => document.documentElement.scrollWidth),
@@ -56,9 +57,9 @@ test("現地メモのテーマ絞り込み・検索・保存", async ({ page }) 
   await page.getByRole("button", { name: "古本屋", exact: true }).click();
   await expect(page.locator(".note-card")).toHaveCount(1);
   await page.getByRole("button", { name: "地域を検索" }).click();
-  await page.getByLabel("京都の話題・メモを検索").fill("見つからない語");
+  await page.getByLabel("話題・メモを検索").fill("見つからない語");
   await expect(page.getByText("一致するメモはありません")).toBeVisible();
-  await page.getByLabel("京都の話題・メモを検索").fill("雨");
+  await page.getByLabel("話題・メモを検索").fill("雨");
   await page.locator(".note-card").click();
   await expect(
     page.getByRole("heading", { name: "雨の日に寄りたい古本屋" }),
@@ -178,7 +179,12 @@ test("訪問予定とステータスのフリック・プロフィール保存",
   await page
     .getByLabel("自己紹介", { exact: true })
     .fill("古本と喫茶店が好きです");
-  await page.getByLabel("京都との関わり").selectOption("再訪予定");
+  await page
+    .getByRole("combobox", { name: "現在の居住地の国・地域", exact: true })
+    .selectOption("country:JP");
+  await page
+    .getByRole("combobox", { name: "現在の居住地の街（任意）", exact: true })
+    .selectOption("city:JP:tokyo");
   await page.getByRole("button", { name: "古本屋", exact: true }).click();
   await page.getByRole("button", { name: "変更を保存" }).click();
   await page.reload();
@@ -317,7 +323,7 @@ test("ホームから2タップで個人プロフィールと1対1の会話へ�
   page,
 }) => {
   await page
-    .getByRole("link", { name: "美咲 住んでいる", exact: true })
+    .getByRole("link", { name: "美咲 日本・京都", exact: true })
     .click();
   await expect(
     page.getByRole("heading", { name: "美咲", level: 1, exact: true }),
@@ -413,7 +419,9 @@ test("国籍必須・街任意・興味のある地域と写真の保存・削�
     ),
   ).toBe(true);
   await nationality.fill("台湾");
-  await page.getByLabel("街（任意）", { exact: true }).fill("");
+  await page
+    .getByRole("combobox", { name: "現在の居住地の国・地域", exact: true })
+    .selectOption("");
   await page
     .getByLabel("興味のある国・地域", { exact: true })
     .fill("韓国、台湾、韓国\n北欧");
@@ -427,7 +435,12 @@ test("国籍必須・街任意・興味のある地域と写真の保存・削�
   );
   await page.reload();
   await expect(nationality).toHaveValue("台湾");
-  await expect(page.getByLabel("街（任意）", { exact: true })).toHaveValue("");
+  await expect(
+    page.getByRole("combobox", {
+      name: "現在の居住地の街（任意）",
+      exact: true,
+    }),
+  ).toHaveValue("");
   await expect(
     page.getByLabel("興味のある国・地域", { exact: true }),
   ).toHaveValue("韓国、台湾、北欧");
@@ -497,4 +510,117 @@ test("写真の形式と元ファイルのサイズを確認し不正ファイ�
     "10MB以下の写真を選んでください",
   );
   await expect(page.locator(".profile-identity img")).toHaveCount(0);
+});
+
+test("現在の居住地と過去の居住地・留学・期間を別々に保存する", async ({
+  page,
+}) => {
+  await page.evaluate(
+    (profile) =>
+      localStorage.setItem("machi-preview-v1", JSON.stringify({ profile })),
+    { ...emptyProfile, name: "既存の会員", nationality: "日本", city: "京都" },
+  );
+  await page.goto("/profile");
+  await expect(page.locator(".legacy-city")).toContainText("京都");
+  await page
+    .getByRole("button", { name: "過去の居住地・滞在先を追加", exact: true })
+    .click();
+  await page
+    .getByRole("combobox", { name: "地域 1の国・地域", exact: true })
+    .selectOption("country:TW");
+  await page
+    .getByRole("combobox", { name: "地域 1の街（任意）", exact: true })
+    .selectOption("city:TW:taipei");
+  await page
+    .getByRole("combobox", { name: "地域 1での目的", exact: true })
+    .selectOption("study");
+  await page.getByLabel("地域 1の開始年", { exact: true }).fill("2019");
+  await page.getByLabel("地域 1の終了年", { exact: true }).fill("2022");
+  await page.getByRole("button", { name: "変更を保存", exact: true }).click();
+  await expect(page.getByRole("status")).toContainText("保存しました");
+  await page.reload();
+  await expect(page.locator(".legacy-city")).toContainText("京都");
+  await expect(
+    page.getByRole("combobox", { name: "現在の居住地の国・地域", exact: true }),
+  ).toHaveValue("");
+  await page
+    .getByRole("combobox", { name: "現在の居住地の国・地域", exact: true })
+    .selectOption("country:JP");
+  await page
+    .getByRole("combobox", { name: "現在の居住地の街（任意）", exact: true })
+    .selectOption("city:JP:tokyo");
+  await page
+    .getByRole("combobox", { name: "現在の居住地での目的", exact: true })
+    .selectOption("work");
+  await page.getByRole("button", { name: "変更を保存", exact: true }).click();
+  await expect(page.getByRole("status")).toContainText("保存しました");
+  await page.reload();
+  await expect(
+    page.getByRole("combobox", {
+      name: "現在の居住地の街（任意）",
+      exact: true,
+    }),
+  ).toHaveValue("city:JP:tokyo");
+  await expect(
+    page.getByRole("combobox", { name: "地域 1の街（任意）", exact: true }),
+  ).toHaveValue("city:TW:taipei");
+  await expect(
+    page.getByRole("combobox", { name: "地域 1での目的", exact: true }),
+  ).toHaveValue("study");
+  await expect(page.getByLabel("地域 1の終了年", { exact: true })).toHaveValue(
+    "2022",
+  );
+  await page
+    .getByRole("combobox", { name: "現在の居住地の国・地域", exact: true })
+    .selectOption("country:CA");
+  await expect(
+    page.getByRole("combobox", {
+      name: "現在の居住地の街（任意）",
+      exact: true,
+    }),
+  ).toHaveValue("");
+  await page
+    .getByRole("button", { name: "地域との関わり 1を削除", exact: true })
+    .click();
+  await page.getByRole("button", { name: "変更を保存", exact: true }).click();
+  await expect(page.getByRole("status")).toContainText("保存しました");
+  await page.reload();
+  await expect(
+    page.getByRole("combobox", { name: "現在の居住地の国・地域", exact: true }),
+  ).toHaveValue("country:CA");
+  await expect(
+    page.getByRole("combobox", { name: "地域 1の国・地域", exact: true }),
+  ).toHaveCount(0);
+});
+
+test("居住と過去の居住を国・街に紐づけて絞り込み、地域タグから会話する", async ({
+  page,
+}) => {
+  await page.goto("/people");
+  await page
+    .getByRole("combobox", { name: "関わりのある地域", exact: true })
+    .selectOption("country:TW");
+  await page
+    .getByRole("combobox", { name: "地域との関わり", exact: true })
+    .selectOption("current");
+  await expect(page.locator(".person-card")).toHaveCount(1);
+  await expect(page.locator(".person-card")).toContainText("あかり");
+  await page
+    .getByRole("combobox", { name: "地域との関わり", exact: true })
+    .selectOption("former");
+  await expect(page.locator(".person-card")).toHaveCount(1);
+  await expect(page.locator(".person-card")).toContainText("美咲");
+  await page.goto("/people/akari");
+  await page.getByRole("link", { name: /台湾・台北.*住んでいる/ }).click();
+  await expect(
+    page.getByRole("combobox", { name: "関わりのある地域", exact: true }),
+  ).toHaveValue("city:TW:taipei");
+  await expect(
+    page.getByRole("combobox", { name: "地域との関わり", exact: true }),
+  ).toHaveValue("current");
+  await expect(page.locator(".person-card")).toHaveCount(1);
+  await page
+    .getByRole("button", { name: "あかり メッセージ", exact: true })
+    .click();
+  await expect(page.locator(".chat-header h1")).toHaveText("あかり");
 });

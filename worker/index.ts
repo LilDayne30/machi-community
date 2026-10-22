@@ -15,6 +15,13 @@ import {
 import { emptyProfile, type CommunityMember } from "../src/lib/data";
 import { MAX_AVATAR_BYTES } from "../src/lib/profile";
 import { readPhoto, validProfileJpeg } from "./photos";
+import {
+  connectionError,
+  getRegion,
+  type RegionConnection,
+} from "../src/lib/regions";
+const connectionsSQL =
+  "(SELECT coalesce(json_group_array(json_object('regionId',region_id,'status',status,'purpose',purpose,'since',start_year,'until',end_year)), '[]') FROM user_region_connections WHERE user_id=u.id) connections";
 type User = {
   id: string;
   google_sub: string;
@@ -23,6 +30,7 @@ type User = {
   role: string;
   profile: string;
   photo_version?: string;
+  connections?: string;
 };
 type Env = {
   DB: D1Database;
@@ -60,7 +68,7 @@ function mustProfile(user: User) {
     });
 }
 function publicMember(
-  user: Pick<User, "id" | "name" | "profile" | "photo_version">,
+  user: Pick<User, "id" | "name" | "profile" | "photo_version" | "connections">,
 ): CommunityMember {
   const p = {
     ...emptyProfile,
@@ -78,6 +86,8 @@ function publicMember(
     city: p.city,
     interestedRegions: p.interestedRegions,
     avatarUrl: avatarUrl(user.id, user.photo_version),
+    connections: parseJSON<RegionConnection[]>(user.connections || "[]", []),
+    visitRegionId: p.visitRegionId,
   };
 }
 async function isBlocked(db: D1Database, a: string, b: string) {
@@ -184,7 +194,7 @@ app.use("/api/*", async (c, next) => {
   const token = getCookie(c, cookieName(c.env));
   if (token)
     user = await c.env.DB.prepare(
-      "SELECT u.*,p.version photo_version FROM users u JOIN sessions s ON u.id=s.user_id LEFT JOIN profile_photos p ON p.user_id=u.id WHERE s.token_hash=? AND s.expires_at>?",
+      `SELECT u.*,p.version photo_version,${connectionsSQL} FROM users u JOIN sessions s ON u.id=s.user_id LEFT JOIN profile_photos p ON p.user_id=u.id WHERE s.token_hash=? AND s.expires_at>?`,
     )
       .bind(await sha256(token), now())
       .first<User>();
@@ -265,7 +275,7 @@ app.get("/api/bootstrap", async (c) => {
     ? (
         await db
           .prepare(
-            "SELECT u.id,u.name,u.profile,p.version photo_version FROM users u LEFT JOIN profile_photos p ON p.user_id=u.id WHERE u.id!=? AND u.role!='provider' AND json_extract(u.profile,'$.acceptsMessages')=1 AND length(trim(coalesce(json_extract(u.profile,'$.nationality'),'')))>0 AND u.id NOT IN (SELECT blocked_id FROM blocks WHERE user_id=? UNION SELECT user_id FROM blocks WHERE blocked_id=?) ORDER BY u.name LIMIT 100",
+            `SELECT u.id,u.name,u.profile,p.version photo_version,${connectionsSQL} FROM users u LEFT JOIN profile_photos p ON p.user_id=u.id WHERE u.id!=? AND u.role!='provider' AND json_extract(u.profile,'$.acceptsMessages')=1 AND length(trim(coalesce(json_extract(u.profile,'$.nationality'),'')))>0 AND u.id NOT IN (SELECT blocked_id FROM blocks WHERE user_id=? UNION SELECT user_id FROM blocks WHERE blocked_id=?) ORDER BY u.name LIMIT 100`,
           )
           .bind(u.id, u.id, u.id)
           .all<User>()
@@ -283,7 +293,7 @@ app.get("/api/bootstrap", async (c) => {
     for (const r of rs.results) {
       const peer = await db
         .prepare(
-          "SELECT u.id,u.name,u.profile,p.version photo_version FROM direct_conversations dc JOIN users u ON u.id=CASE WHEN dc.user_low=? THEN dc.user_high ELSE dc.user_low END LEFT JOIN profile_photos p ON p.user_id=u.id WHERE dc.room_id=?",
+          `SELECT u.id,u.name,u.profile,p.version photo_version,${connectionsSQL} FROM direct_conversations dc JOIN users u ON u.id=CASE WHEN dc.user_low=? THEN dc.user_high ELSE dc.user_low END LEFT JOIN profile_photos p ON p.user_id=u.id WHERE dc.room_id=?`,
         )
         .bind(u.id, r.id)
         .first<User>();
@@ -359,6 +369,7 @@ app.get("/api/bootstrap", async (c) => {
           ...parseJSON(u.profile, {}),
           name: u.name,
           avatarUrl: avatarUrl(u.id, u.photo_version),
+          connections: parseJSON<RegionConnection[]>(u.connections || "[]", []),
         }
       : emptyProfile,
     talks,
@@ -526,6 +537,27 @@ app.put("/api/profile", async (c) => {
         name: z.string().trim().min(1).max(40),
         nationality: z.string().trim().min(1, "国籍を入力してください").max(60),
         city: z.string().trim().max(80).default(""),
+        visitRegionId: z
+          .string()
+          .max(80)
+          .refine((s) => !s || !!getRegion(s), "訪問先を候補から選んでください")
+          .optional(),
+        connections: z
+          .array(
+            z.object({
+              regionId: z.string().max(80),
+              status: z.enum(["current", "former", "stay"]),
+              purpose: z.enum(["", "work", "study"]).default(""),
+              since: z.number().int().nullable().default(null),
+              until: z.number().int().nullable().default(null),
+            }),
+          )
+          .max(8)
+          .superRefine((values, ctx) => {
+            const message = connectionError(values);
+            if (message) ctx.addIssue({ code: "custom", message });
+          })
+          .optional(),
         interestedRegions: z
           .array(z.string().trim().min(1).max(60))
           .max(12)
@@ -556,9 +588,45 @@ app.put("/api/profile", async (c) => {
         acceptsMessages: z.boolean().default(false),
       }),
     );
-  await c.env.DB.prepare("UPDATE users SET name=?,profile=? WHERE id=?")
-    .bind(p.name, JSON.stringify(p), u.id)
-    .run();
+  const { connections, ...profile } = p;
+  const current = (
+    connections ?? parseJSON<RegionConnection[]>(u.connections || "[]", [])
+  ).find((c) => c.status === "current");
+  if (current) {
+    const region = getRegion(current.regionId);
+    profile.city = region?.kind === "city" ? region.name : "";
+  }
+  if (profile.visitRegionId === undefined)
+    profile.visitRegionId =
+      parseJSON<{ visitRegionId?: string }>(u.profile, {}).visitRegionId || "";
+  const statements = [
+    c.env.DB.prepare("UPDATE users SET name=?,profile=? WHERE id=?").bind(
+      p.name,
+      JSON.stringify(profile),
+      u.id,
+    ),
+  ];
+  if (connections !== undefined) {
+    statements.push(
+      c.env.DB.prepare(
+        "DELETE FROM user_region_connections WHERE user_id=?",
+      ).bind(u.id),
+    );
+    for (const connection of connections)
+      statements.push(
+        c.env.DB.prepare(
+          "INSERT INTO user_region_connections(user_id,region_id,status,purpose,start_year,end_year) VALUES(?,?,?,?,?,?)",
+        ).bind(
+          u.id,
+          connection.regionId,
+          connection.status,
+          connection.purpose,
+          connection.since,
+          connection.until,
+        ),
+      );
+  }
+  await c.env.DB.batch(statements);
   return c.json({ ok: true });
 });
 app.put("/api/profile/photo", async (c) => {

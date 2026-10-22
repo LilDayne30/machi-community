@@ -96,6 +96,7 @@ beforeEach(() => {
   sql.exec(readFileSync("migrations/0001_initial.sql", "utf8"));
   sql.exec(readFileSync("migrations/0002_direct_conversations.sql", "utf8"));
   sql.exec(readFileSync("migrations/0003_profile_photos.sql", "utf8"));
+  sql.exec(readFileSync("migrations/0004_region_connections.sql", "utf8"));
   sql.exec(
     "INSERT INTO users(id,google_sub,email,name) VALUES('u','g','user@example.test','テスト'); INSERT INTO talks(id,title,category,starts_at,image,host,description) VALUES('t','会話','喫茶店','2099-01-01T12:00:00Z','/icon.svg','運営','テスト'); INSERT INTO bookings(id,talk_id,user_id,status,amount,stripe_session_id,expires_at) VALUES('b','t','u','pending',1000,'cs_local',unixepoch()+1800)",
   );

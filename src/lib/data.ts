@@ -1,3 +1,4 @@
+import type { RegionConnection } from "./regions";
 export type Person = {
   name: string;
   role: "住んでいる" | "最近訪れた" | "事業者" | "進行役";
@@ -54,6 +55,8 @@ export type CommunityMember = {
   city: string;
   interestedRegions: string[];
   avatarUrl?: string;
+  connections: RegionConnection[];
+  visitRegionId: string;
 };
 export type Room = {
   id: string;
@@ -103,6 +106,8 @@ export type Profile = {
   city: string;
   interestedRegions: string[];
   avatarUrl?: string;
+  connections: RegionConnection[];
+  visitRegionId: string;
 };
 export type Bootstrap = {
   mode: "preview" | "production";
@@ -145,6 +150,23 @@ export const people: Person[] = [
 export const communityPeople: CommunityMember[] = [
   {
     id: "misaki",
+    connections: [
+      {
+        regionId: "city:JP:kyoto",
+        status: "current",
+        purpose: "",
+        since: 2018,
+        until: null,
+      },
+      {
+        regionId: "city:TW:taipei",
+        status: "former",
+        purpose: "study",
+        since: 2014,
+        until: 2016,
+      },
+    ],
+    visitRegionId: "",
     nationality: "日本",
     city: "京都",
     interestedRegions: ["台湾", "韓国"],
@@ -158,6 +180,23 @@ export const communityPeople: CommunityMember[] = [
   },
   {
     id: "yuta",
+    connections: [
+      {
+        regionId: "city:JP:tokyo",
+        status: "current",
+        purpose: "work",
+        since: 2023,
+        until: null,
+      },
+      {
+        regionId: "city:CA:vancouver",
+        status: "former",
+        purpose: "",
+        since: 2016,
+        until: 2023,
+      },
+    ],
+    visitRegionId: "city:JP:kyoto",
     nationality: "カナダ",
     city: "東京",
     interestedRegions: ["日本", "台湾"],
@@ -171,11 +210,35 @@ export const communityPeople: CommunityMember[] = [
   },
   {
     id: "akari",
+    connections: [
+      {
+        regionId: "city:TW:taipei",
+        status: "current",
+        purpose: "study",
+        since: 2025,
+        until: null,
+      },
+      {
+        regionId: "city:KR:seoul",
+        status: "former",
+        purpose: "",
+        since: 2018,
+        until: 2024,
+      },
+      {
+        regionId: "city:JP:kyoto",
+        status: "stay",
+        purpose: "",
+        since: 2026,
+        until: 2026,
+      },
+    ],
+    visitRegionId: "",
     nationality: "韓国",
-    city: "京都",
+    city: "台北",
     interestedRegions: ["日本", "北欧"],
     name: "あかり",
-    bio: "京都で暮らしながら写真を撮っています。東山の小道や、静かな朝の時間について話せます。",
+    bio: "台北で留学中。今は京都に短期滞在しています。ソウルで暮らした経験や、旅先の写真について話せます。",
     relation: "住んでいる",
     interests: ["写真", "街歩き"],
     availability: "不定期・都度相談",
@@ -357,6 +420,8 @@ export const rooms: Room[] = [
   },
 ];
 export const emptyProfile: Profile = {
+  connections: [],
+  visitRegionId: "",
   nationality: "",
   city: "",
   interestedRegions: [],

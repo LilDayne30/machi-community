@@ -754,3 +754,171 @@ test("写真APIで未認証・CSRF・不正形式・偽JPEG・容量超過を拒
     ).status(),
   ).toBe(413);
 });
+
+test("地域のID・居住ステータス・期間を検証し、旧形式の更新でも地域を保持する", async ({
+  request,
+}) => {
+  const initial = await (
+    await request.get("/api/bootstrap", { headers: auth("region") })
+  ).json();
+  const connections = [
+    {
+      regionId: "city:JP:tokyo",
+      status: "current",
+      purpose: "work",
+      since: 2023,
+      until: null,
+    },
+    {
+      regionId: "city:TW:taipei",
+      status: "former",
+      purpose: "study",
+      since: 2019,
+      until: 2022,
+    },
+  ];
+  const profile = {
+    ...initial.profile,
+    nationality: "カナダ",
+    city: "偽の街",
+    connections,
+    visitRegionId: "city:KR:seoul",
+  };
+  expect(
+    (
+      await request.put("/api/profile", {
+        headers: auth("region"),
+        data: profile,
+      })
+    ).ok(),
+  ).toBe(true);
+  let saved = await (
+    await request.get("/api/bootstrap", { headers: auth("region") })
+  ).json();
+  expect(saved.profile).toMatchObject({
+    nationality: "カナダ",
+    city: "東京",
+    visitRegionId: "city:KR:seoul",
+  });
+  expect(saved.profile.connections).toEqual(
+    expect.arrayContaining(connections),
+  );
+  for (const invalid of [
+    [{ ...connections[0], regionId: "unknown" }],
+    [connections[0], { ...connections[0], regionId: "country:TW" }],
+    [connections[0], connections[1], connections[1]],
+    [{ ...connections[1], since: 2025, until: 2020 }],
+    [{ ...connections[0], until: 2025 }],
+    [{ ...connections[0], status: "verified-resident" }],
+    [{ ...connections[0], purpose: "unknown" }],
+  ])
+    expect(
+      (
+        await request.put("/api/profile", {
+          headers: auth("region"),
+          data: { ...profile, connections: invalid },
+        })
+      ).status(),
+    ).toBe(400);
+  expect(
+    (
+      await request.put("/api/profile", {
+        headers: auth("region"),
+        data: { ...profile, visitRegionId: "unknown" },
+      })
+    ).status(),
+  ).toBe(400);
+  const { connections: omitted, ...legacy } = saved.profile;
+  expect(
+    (
+      await request.put("/api/profile", {
+        headers: auth("region"),
+        data: { ...legacy, city: "勝手な街" },
+      })
+    ).ok(),
+  ).toBe(true);
+  saved = await (
+    await request.get("/api/bootstrap", { headers: auth("region") })
+  ).json();
+  expect(saved.profile.connections).toEqual(
+    expect.arrayContaining(connections),
+  );
+  expect(saved.profile.city).toBe("東京");
+});
+
+test("地域情報の更新は本人だけに限定し、受付とブロックの公開範囲を守る", async ({
+  request,
+}) => {
+  const own = await (
+    await request.get("/api/bootstrap", { headers: auth("region") })
+  ).json();
+  const other = await (
+    await request.get("/api/bootstrap", { headers: auth("db") })
+  ).json();
+  expect(
+    (
+      await request.put("/api/profile", { headers: origin, data: own.profile })
+    ).status(),
+  ).toBe(401);
+  let viewer = await (
+    await request.get("/api/bootstrap", { headers: auth("dc") })
+  ).json();
+  expect(viewer.people.find((p: any) => p.id === "e2e-region")).toBeUndefined();
+  expect(
+    (
+      await request.put("/api/profile?userId=e2e-db", {
+        headers: auth("region"),
+        data: { ...own.profile, userId: "e2e-db", acceptsMessages: true },
+      })
+    ).ok(),
+  ).toBe(true);
+  expect(
+    (
+      await (
+        await request.get("/api/bootstrap", { headers: auth("db") })
+      ).json()
+    ).profile,
+  ).toEqual(other.profile);
+  viewer = await (
+    await request.get("/api/bootstrap", { headers: auth("dc") })
+  ).json();
+  const publicProfile = viewer.people.find((p: any) => p.id === "e2e-region");
+  expect(publicProfile.connections).toHaveLength(2);
+  expect(publicProfile.connections[0]).not.toHaveProperty("user_id");
+  expect(
+    (
+      await request.post("/api/conversations", {
+        headers: auth("dc"),
+        data: { personId: "e2e-region" },
+      })
+    ).ok(),
+  ).toBe(true);
+  expect(
+    (
+      await request.post("/api/blocks", {
+        headers: auth("region"),
+        data: { personId: "e2e-dc" },
+      })
+    ).ok(),
+  ).toBe(true);
+  viewer = await (
+    await request.get("/api/bootstrap", { headers: auth("dc") })
+  ).json();
+  expect(viewer.people.find((p: any) => p.id === "e2e-region")).toBeUndefined();
+  await request.delete("/api/blocks/e2e-dc", { headers: auth("region") });
+  expect(
+    (
+      await request.put("/api/profile", {
+        headers: auth("region"),
+        data: { ...own.profile, connections: [], city: "" },
+      })
+    ).ok(),
+  ).toBe(true);
+  expect(
+    (
+      await (
+        await request.get("/api/bootstrap", { headers: auth("region") })
+      ).json()
+    ).profile.connections,
+  ).toEqual([]);
+});

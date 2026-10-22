@@ -1,4 +1,5 @@
 import type { CommunityMember } from "./data";
+import { connectionSearch, withinRegion } from "./regions";
 export const MAX_AVATAR_BYTES = 192 * 1024;
 export const normalizePlace = (value: string) =>
   value.normalize("NFKC").trim().toLocaleLowerCase();
@@ -20,6 +21,8 @@ export function matchesMember(
   nationality: string,
   region: string,
   theme: string,
+  place = "",
+  status = "",
 ) {
   const search = normalizePlace(query);
   return (
@@ -32,6 +35,7 @@ export function matchesMember(
           person.city,
           ...person.interestedRegions,
           ...person.interests,
+          ...person.connections.map(connectionSearch),
         ].join(" "),
       ).includes(search)) &&
     (!nationality ||
@@ -40,6 +44,12 @@ export function matchesMember(
       person.interestedRegions.some(
         (r) => normalizePlace(r) === normalizePlace(region),
       )) &&
-    (theme === "すべて" || person.interests.includes(theme))
+    (theme === "すべて" || person.interests.includes(theme)) &&
+    ((!place && !status) ||
+      person.connections.some(
+        (c) =>
+          (!place || withinRegion(c.regionId, place)) &&
+          (!status || c.status === status),
+      ))
   );
 }
