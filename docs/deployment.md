@@ -9,11 +9,14 @@
 - Cloudflareの `Danaoki30@gmail.com's Account` に `machi-community` D1をアジア配置で作成しました。`wrangler.jsonc` はこのアカウントとDBへ設定済みです。
 - 本番D1の初期スキーマを適用し、18テーブル・7インデックス・会員0件を実SQLで確認しました。`d1_migrations` に `0001_initial.sql` の適用済み記録もあります。DBを再作成しないでください。
 - 1対1会話を追加する `0002_direct_conversations.sql` はローカル・本番へ適用済みです。本番でも追加テーブル・3つのトリガー・移行履歴を読み戻しました。今後の未適用分は `npm run db:remote` で適用します。既存の小部屋や履歴を引き継ぎます。
+- 写真用の `0003_profile_photos.sql` はローカルへ適用済みです。今回のWorkerを本番へデプロイする前に `npm run db:remote` で本番にも適用してください。国籍・街・興味のある地域は既存のprofile JSONで保持します。既存会員は国籍登録後にメッセージを送れるようになります。
 - 配信先の設定は `https://machi-community.danaoki30.workers.dev` です。これは設定上の公開予定URLで、デプロイ済みという意味ではありません。
 - Google OAuthの設定は、Google Cloudの本人確認・多要素認証などの要件を満たしたアカウントで行ってください。
 - デプロイにはCLI認証と、Google OAuth / Stripe / Resendのruntime secretの設定が必要です。秘密情報はリポジトリへ保存しません。
 
 以下は接続を完了する手順です。すでに作成したリポジトリやD1を重複作成しないでください。
+
+`npm run api:dev` は `wrangler dev --local` を使い、開発・テストをローカルで実行します。Workers AIの実応答を確認する際はCloudflare CLI認証後に `npx wrangler dev --port 8787` でremote bindingを有効にしてください。
 
 ## 1. GitHub
 

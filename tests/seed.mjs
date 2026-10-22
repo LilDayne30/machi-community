@@ -13,6 +13,7 @@ for (const table of [
   "consultations",
   "activity",
   "blocks",
+  "profile_photos",
   "direct_conversations",
   "room_members",
   "messages",
@@ -33,6 +34,9 @@ for (const [id, name, role] of [
   ["pb", "事業者B", "provider"],
   ["ui", "接続テスト会員", "member"],
   ["da", "個人会話A", "member"],
+  ["photo", "写真API会員", "member"],
+  ["pui", "写真と地域のテストさん", "member"],
+  ["missing", "国籍未登録会員", "member"],
   ["db", "個人会話B", "member"],
   ["dc", "個人会話C", "member"],
   ["closed", "受付停止の会員", "member"],
@@ -46,6 +50,9 @@ for (const [id, name, role] of [
   ]),
 ]) {
   const profile = JSON.stringify({
+    nationality: id === "missing" ? "" : "日本",
+    city: "京都",
+    interestedRegions: ["台湾", "韓国"],
     relation: "最近訪れた",
     bio: "喫茶店と再訪の話をしたいです",
     interests: ["喫茶店"],

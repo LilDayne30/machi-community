@@ -3,6 +3,7 @@ export type Person = {
   role: "住んでいる" | "最近訪れた" | "事業者" | "進行役";
   color: string;
   initial: string;
+  avatarUrl?: string;
 };
 export type Talk = {
   id: string;
@@ -29,6 +30,7 @@ export type Note = {
   verifiedAt: string;
   category: string;
   relation: string;
+  avatarUrl?: string;
 };
 export type Message = {
   id: string;
@@ -37,6 +39,7 @@ export type Message = {
   time: string;
   own: boolean;
   replyTo?: string;
+  avatarUrl?: string;
 };
 export type CommunityMember = {
   id: string;
@@ -47,6 +50,10 @@ export type CommunityMember = {
   availability: string;
   visitDate: string;
   color?: string;
+  nationality: string;
+  city: string;
+  interestedRegions: string[];
+  avatarUrl?: string;
 };
 export type Room = {
   id: string;
@@ -92,6 +99,10 @@ export type Profile = {
   visitStatus?: number;
   availability: string;
   acceptsMessages?: boolean;
+  nationality: string;
+  city: string;
+  interestedRegions: string[];
+  avatarUrl?: string;
 };
 export type Bootstrap = {
   mode: "preview" | "production";
@@ -134,6 +145,9 @@ export const people: Person[] = [
 export const communityPeople: CommunityMember[] = [
   {
     id: "misaki",
+    nationality: "日本",
+    city: "京都",
+    interestedRegions: ["台湾", "韓国"],
     name: "美咲",
     bio: "京都に住んでいます。朝の喫茶店と、鴨川沿いの散歩が好きです。お店の話から気軽にどうぞ。",
     relation: "住んでいる",
@@ -144,6 +158,9 @@ export const communityPeople: CommunityMember[] = [
   },
   {
     id: "yuta",
+    nationality: "カナダ",
+    city: "東京",
+    interestedRegions: ["日本", "台湾"],
     name: "悠太",
     bio: "年に何度か京都へ。本とコーヒーのある場所を、ゆっくり探しています。次の旅の話もできたら。",
     relation: "再訪予定",
@@ -154,6 +171,9 @@ export const communityPeople: CommunityMember[] = [
   },
   {
     id: "akari",
+    nationality: "韓国",
+    city: "京都",
+    interestedRegions: ["日本", "北欧"],
     name: "あかり",
     bio: "京都で暮らしながら写真を撮っています。東山の小道や、静かな朝の時間について話せます。",
     relation: "住んでいる",
@@ -337,6 +357,10 @@ export const rooms: Room[] = [
   },
 ];
 export const emptyProfile: Profile = {
+  nationality: "",
+  city: "",
+  interestedRegions: [],
+  avatarUrl: "",
   name: "",
   bio: "",
   relation: "最近訪れた",

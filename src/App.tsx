@@ -7,6 +7,7 @@ import {
   useLocation,
   useNavigate,
   useParams,
+  useSearchParams,
 } from "react-router-dom";
 import { AnimatePresence, motion } from "motion/react";
 import {
@@ -17,6 +18,8 @@ import {
   Bell,
   Bookmark,
   CalendarDays,
+  Camera,
+  Globe2,
   Check,
   ChevronDown,
   ChevronLeft,
@@ -44,6 +47,8 @@ import {
   X,
 } from "lucide-react";
 import { api, saveProfile, useApp } from "./lib/store";
+import { matchesMember, normalizePlace, parseRegions } from "./lib/profile";
+import { photoDataUrl, prepareProfilePhoto } from "./lib/photo";
 import {
   dateLabel,
   emptyProfile,
@@ -139,7 +144,11 @@ export default function App() {
             <ArrowUpRight size={14} />
           </button>
           <Link to="/profile" className="sidebar-user">
-            <Avatar name={data.profile.name || "ゲスト"} small />
+            <Avatar
+              name={data.profile.name || "ゲスト"}
+              src={data.profile.avatarUrl}
+              small
+            />
             <span>
               {data.profile.name || "ゲスト"}
               <small>
@@ -178,7 +187,11 @@ export default function App() {
               {data.rooms.some((r) => r.unread > 0) && <i />}
             </button>
             <Link to="/profile" aria-label="プロフィールを開く">
-              <Avatar name={data.profile.name || "ゲスト"} small />
+              <Avatar
+                name={data.profile.name || "ゲスト"}
+                src={data.profile.avatarUrl}
+                small
+              />
             </Link>
           </div>
         </header>
@@ -271,7 +284,7 @@ export default function App() {
       <AnimatePresence>
         {notify && (
           <motion.div
-            key={notify}
+            key="toast"
             role="status"
             className="toast glass"
             initial={{ opacity: 0, y: 20 }}
@@ -446,7 +459,11 @@ function Home() {
                     to={"/rooms/" + r.id}
                   >
                     <div className="room-cover">
-                      <Avatar name={r.title} color={r.peer?.color} />
+                      <Avatar
+                        name={r.title}
+                        color={r.peer?.color}
+                        src={r.peer?.avatarUrl}
+                      />
                       {r.unread > 0 && <span className="unread-dot" />}
                     </div>
                     <div className="room-preview-text">
@@ -546,7 +563,7 @@ function Home() {
                 <div className="note-content">
                   <h3>{n.title}</h3>
                   <div className="note-author">
-                    <Avatar name={n.author} small />
+                    <Avatar name={n.author} src={n.avatarUrl} small />
                     <span>
                       {n.author}
                       <small>{n.role}</small>
@@ -902,7 +919,7 @@ function TalkDetail() {
             <div className="participant-list">
               {t.participants.map((p) => (
                 <div key={p.name}>
-                  <Avatar name={p.name} color={p.color} />
+                  <Avatar name={p.name} color={p.color} src={p.avatarUrl} />
                   <span>
                     {p.name}
                     <small>{p.role}</small>
@@ -1082,7 +1099,7 @@ function ConversationButton({
   person: CommunityMember;
   blocked?: boolean;
 }) {
-  const { startConversation, toast } = useApp(),
+  const { startConversation, toast, data } = useApp(),
     navigate = useNavigate(),
     [busy, setBusy] = useState(false);
   return (
@@ -1095,6 +1112,11 @@ function ConversationButton({
       }
       disabled={busy || blocked}
       onClick={async () => {
+        if (!data.profile.nationality.trim()) {
+          toast("国籍を登録すると会話を始められます");
+          navigate("/profile");
+          return;
+        }
         setBusy(true);
         try {
           const id = await startConversation(person);
@@ -1124,7 +1146,11 @@ function MemberCard({ person }: { person: CommunityMember }) {
         className="person-identity"
         title={person.name + "のプロフィール"}
       >
-        <Avatar name={person.name} color={person.color} />
+        <Avatar
+          name={person.name}
+          color={person.color}
+          src={person.avatarUrl}
+        />
         <div>
           <h3>{person.name}</h3>
           <span>
@@ -1134,10 +1160,21 @@ function MemberCard({ person }: { person: CommunityMember }) {
         </div>
         <ChevronRight size={16} />
       </Link>
+      <div className="person-location">
+        <Globe2 size={13} />
+        <span>
+          {person.nationality || "国籍未登録"}
+          {person.city && " · " + person.city}
+        </span>
+      </div>
       <div className="person-interests">
         {person.interests.map((interest) => (
           <span key={interest}>{interest}</span>
         ))}
+      </div>
+      <div className="person-regions">
+        <span>興味のある国・地域</span>
+        <RegionLinks regions={person.interestedRegions.slice(0, 3)} />
       </div>
       <p>{person.bio || "自己紹介はまだありません"}</p>
       <small>
@@ -1148,14 +1185,45 @@ function MemberCard({ person }: { person: CommunityMember }) {
     </motion.article>
   );
 }
+function RegionLinks({ regions }: { regions: string[] }) {
+  return (
+    <div className="region-links">
+      {regions.map((region) => (
+        <Link
+          key={region}
+          to={"/people?region=" + encodeURIComponent(region)}
+          title={region + "に興味のある人を見る"}
+        >
+          {region}
+          <ArrowUpRight size={12} />
+        </Link>
+      ))}
+    </div>
+  );
+}
 function Members() {
   const { data } = useApp(),
     [query, setQuery] = useState(""),
-    [theme, setTheme] = useState("すべて");
-  const list = data.people.filter(
-    (p) =>
-      (!query || (p.name + p.bio + p.interests.join(" ")).includes(query)) &&
-      (theme === "すべて" || p.interests.includes(theme)),
+    [theme, setTheme] = useState("すべて"),
+    [params, setParams] = useSearchParams();
+  const nationality = params.get("nationality") || "",
+    region = params.get("region") || "";
+  const countries = [
+    ...new Set(data.people.map((p) => p.nationality).filter(Boolean)),
+  ].sort((a, b) => a.localeCompare(b, "ja"));
+  const regions = [
+    ...new Set(data.people.flatMap((p) => p.interestedRegions)),
+  ].sort((a, b) => a.localeCompare(b, "ja"));
+  function filter(key: string, value: string) {
+    setParams((previous) => {
+      const next = new URLSearchParams(previous);
+      if (value) next.set(key, value);
+      else next.delete(key);
+      return next;
+    });
+  }
+  const list = data.people.filter((p) =>
+    matchesMember(p, query, nationality, region, theme),
   );
   return (
     <>
@@ -1167,14 +1235,57 @@ function Members() {
       </Heading>
       <div className="people-tools glass">
         <label className="field">
-          名前・話したいこと
+          名前・街・話したいこと
           <input
             type="search"
             value={query}
-            placeholder="喫茶店、古本屋…"
+            placeholder="台北、京都、喫茶店…"
             onChange={(e) => setQuery(e.target.value)}
           />
         </label>
+        <div className="form-row discovery-filters">
+          <label className="field">
+            国籍で絞り込む
+            <select
+              value={nationality}
+              onChange={(e) => filter("nationality", e.target.value)}
+            >
+              <option value="">すべての国籍</option>
+              {countries.map((s) => (
+                <option key={s}>{s}</option>
+              ))}
+            </select>
+          </label>
+          <label className="field">
+            興味のある国・地域で絞り込む
+            <select
+              value={region}
+              onChange={(e) => filter("region", e.target.value)}
+            >
+              <option value="">すべての国・地域</option>
+              {region && !regions.includes(region) && <option>{region}</option>}
+              {regions.map((s) => (
+                <option key={s}>{s}</option>
+              ))}
+            </select>
+          </label>
+        </div>
+        {data.profile.interestedRegions.length > 0 && (
+          <div className="my-region-filters">
+            <span>あなたの興味から探す</span>
+            <div className="filter-row">
+              {data.profile.interestedRegions.map((s) => (
+                <CheckChip
+                  key={s}
+                  selected={normalizePlace(region) === normalizePlace(s)}
+                  onClick={() => filter("region", region === s ? "" : s)}
+                >
+                  {s}
+                </CheckChip>
+              ))}
+            </div>
+          </div>
+        )}
         <div className="filter-row">
           {["すべて", "喫茶店", "街歩き", "古本屋", "写真", "留学"].map((s) => (
             <CheckChip
@@ -1185,6 +1296,21 @@ function Members() {
               {s}
             </CheckChip>
           ))}
+        </div>
+        <div className="people-result-count">
+          <span>{list.length}人</span>
+          {(query || nationality || region || theme !== "すべて") && (
+            <button
+              onClick={() => {
+                setQuery("");
+                setTheme("すべて");
+                setParams({});
+              }}
+            >
+              絞り込みを解除
+              <X size={13} />
+            </button>
+          )}
         </div>
       </div>
       <div className="people-grid">
@@ -1230,20 +1356,51 @@ function MemberDetail() {
       </Link>
       <article className="member-profile glass">
         <div className="member-profile-top">
-          <Avatar name={person.name} color={person.color} />
+          <Avatar
+            name={person.name}
+            color={person.color}
+            src={person.avatarUrl}
+          />
           <span className="pill">
             <MapPin size={13} />
             京都・{person.relation}
           </span>
         </div>
         <h1>{person.name}</h1>
+        <div className="person-location">
+          <Globe2 size={15} />
+          {person.nationality || "国籍未登録"}
+          {person.city && (
+            <>
+              <span>·</span>
+              <MapPin size={14} />
+              {person.city}
+            </>
+          )}
+        </div>
         <p className="member-bio">{person.bio || "自己紹介はまだありません"}</p>
         <div className="person-interests">
           {person.interests.map((s) => (
             <span key={s}>{s}</span>
           ))}
         </div>
+        <section className="member-regions">
+          <h2>興味のある国・地域</h2>
+          {person.interestedRegions.length ? (
+            <RegionLinks regions={person.interestedRegions} />
+          ) : (
+            <p className="muted">まだ登録されていません</p>
+          )}
+        </section>
         <dl>
+          <dt>国籍</dt>
+          <dd>{person.nationality || "未登録"}</dd>
+          {person.city && (
+            <>
+              <dt>街</dt>
+              <dd>{person.city}</dd>
+            </>
+          )}
           <dt>話せる時間</dt>
           <dd>{person.availability}</dd>
           {person.visitDate && (
@@ -1313,7 +1470,11 @@ function Rooms() {
                 key={r.id}
                 to={"/rooms/" + r.id}
               >
-                <Avatar name={r.title} color={r.peer?.color} />
+                <Avatar
+                  name={r.title}
+                  color={r.peer?.color}
+                  src={r.peer?.avatarUrl}
+                />
                 <div className="conversation-copy">
                   <div>
                     <h2>{r.title}</h2>
@@ -1478,6 +1639,10 @@ function RoomDetail() {
   async function send(e: FormEvent) {
     e.preventDefault();
     if (!body.trim() || room?.blocked || !guard()) return;
+    if (!data.profile.nationality.trim()) {
+      toast("プロフィールに国籍を登録してください");
+      return;
+    }
     setBusy(true);
     try {
       if (data.mode === "production") {
@@ -1493,6 +1658,7 @@ function RoomDetail() {
         const message = {
           id: crypto.randomUUID(),
           author: data.profile.name || "あなた",
+          avatarUrl: data.profile.avatarUrl,
           body: body.trim(),
           time: new Intl.DateTimeFormat("ja-JP", {
             hour: "2-digit",
@@ -1575,7 +1741,11 @@ function RoomDetail() {
                 to={"/people/" + room.peer?.id}
                 aria-label={room.title + "のプロフィール"}
               >
-                <Avatar name={room.title} color={room.peer?.color} />
+                <Avatar
+                  name={room.title}
+                  color={room.peer?.color}
+                  src={room.peer?.avatarUrl}
+                />
               </Link>
             ) : (
               <img src={room.image} alt="" />
@@ -1615,7 +1785,11 @@ function RoomDetail() {
           </div>
           {direct && !room.messages.length && !room.blocked && (
             <div className="conversation-start">
-              <Avatar name={room.title} color={room.peer?.color} />
+              <Avatar
+                name={room.title}
+                color={room.peer?.color}
+                src={room.peer?.avatarUrl}
+              />
               <h2>{room.title}との会話</h2>
               <p>話したいテーマ：{room.peer?.interests.join("・")}</p>
               <small>{room.peer?.availability}</small>
@@ -1641,7 +1815,7 @@ function RoomDetail() {
             .filter((m) => !direct || !room.blockedByMe || m.own)
             .map((m) => (
               <div className={"message " + (m.own ? "own" : "")} key={m.id}>
-                {!m.own && <Avatar name={m.author} small />}
+                {!m.own && <Avatar name={m.author} src={m.avatarUrl} small />}
                 <div className="message-main">
                   <div className="message-author">
                     {m.own ? "あなた" : m.author}
@@ -1840,7 +2014,7 @@ function NoteDetail() {
           <div className="eyebrow">KYOTO · {n.category}</div>
           <h1>{n.title}</h1>
           <div className="note-detail-author">
-            <Avatar name={n.author} />
+            <Avatar name={n.author} src={n.avatarUrl} />
             <div>
               <strong>{n.author}</strong>
               <span className="pill">{n.role}</span>
@@ -2158,14 +2332,83 @@ function ProfilePage() {
   const { data, setData, toast, guard, refresh } = useApp(),
     [p, setP] = useState<Profile>(data.profile || emptyProfile),
     [busy, setBusy] = useState(false),
-    [reset, setReset] = useState(false);
+    [reset, setReset] = useState(false),
+    [regionsText, setRegionsText] = useState(
+      data.profile.interestedRegions.join("、"),
+    ),
+    [photo, setPhoto] = useState<Blob | null>(null),
+    [photoPreview, setPhotoPreview] = useState(""),
+    [removePhoto, setRemovePhoto] = useState(false),
+    [processingPhoto, setProcessingPhoto] = useState(false);
+  useEffect(() => {
+    if (!photo) {
+      setPhotoPreview("");
+      return;
+    }
+    const url = URL.createObjectURL(photo);
+    setPhotoPreview(url);
+    return () => URL.revokeObjectURL(url);
+  }, [photo]);
   async function submit(e: FormEvent) {
     e.preventDefault();
     if (!guard()) return;
+    const interestedRegions = parseRegions(regionsText);
+    if (!p.nationality.trim()) {
+      toast("国籍を入力してください");
+      return;
+    }
+    if (
+      interestedRegions.length > 12 ||
+      interestedRegions.some((s) => s.length > 60)
+    ) {
+      toast("興味のある国・地域は1つ60文字以内、12件までです");
+      return;
+    }
     setBusy(true);
     try {
-      await saveProfile(p, data.mode);
-      setData((d) => ({ ...d, profile: p }));
+      let next = {
+        ...p,
+        nationality: p.nationality.trim(),
+        city: p.city.trim(),
+        interestedRegions,
+      };
+      await saveProfile(next, data.mode);
+      if (photo) {
+        const avatarUrl =
+          data.mode === "preview"
+            ? await photoDataUrl(photo)
+            : (
+                await api<{ avatarUrl: string }>("/profile/photo", {
+                  method: "PUT",
+                  headers: { "Content-Type": "image/jpeg" },
+                  body: photo,
+                })
+              ).avatarUrl;
+        next = { ...next, avatarUrl };
+      } else if (removePhoto) {
+        if (data.mode === "production")
+          await api("/profile/photo", { method: "DELETE" });
+        next = { ...next, avatarUrl: "" };
+      }
+      setP(next);
+      setPhoto(null);
+      setRemovePhoto(false);
+      setData((d) => ({
+        ...d,
+        profile: next,
+        rooms:
+          d.mode === "preview"
+            ? d.rooms.map((r) => ({
+                ...r,
+                messages: r.messages.map((m) =>
+                  m.own
+                    ? { ...m, author: next.name, avatarUrl: next.avatarUrl }
+                    : m,
+                ),
+              }))
+            : d.rooms,
+      }));
+      if (data.mode === "production") await refresh();
       toast("プロフィールを保存しました");
     } catch (e) {
       toast((e as Error).message);
@@ -2204,11 +2447,57 @@ function ProfilePage() {
       )}
       <form className="profile-form glass" onSubmit={submit}>
         <div className="profile-identity">
-          <Avatar name={p.name || "旅"} color="#dce5dc" />
+          <Avatar
+            name={p.name || "旅"}
+            color="#dce5dc"
+            src={photo ? photoPreview : removePhoto ? "" : p.avatarUrl}
+          />
           <div>
             <h2>{p.name || "プロフィール設定"}</h2>
             <span className="pill">京都コミュニティ</span>
           </div>
+        </div>
+        <div className="profile-photo-controls">
+          <input
+            className="photo-input"
+            id="profile-photo"
+            type="file"
+            accept="image/jpeg,image/png,image/webp"
+            disabled={processingPhoto || busy}
+            onChange={async (e) => {
+              const file = e.currentTarget.files?.[0];
+              e.currentTarget.value = "";
+              if (!file) return;
+              setProcessingPhoto(true);
+              try {
+                setPhoto(await prepareProfilePhoto(file));
+                setRemovePhoto(false);
+              } catch (error) {
+                toast((error as Error).message);
+              } finally {
+                setProcessingPhoto(false);
+              }
+            }}
+          />
+          <label className="button subtle small-button" htmlFor="profile-photo">
+            <Camera size={16} />
+            {processingPhoto ? "写真を準備中…" : "プロフィール写真を選ぶ"}
+          </label>
+          {(photo || (!removePhoto && p.avatarUrl)) && (
+            <button
+              type="button"
+              className="button text-button small-button"
+              onClick={() => {
+                setPhoto(null);
+                setRemovePhoto(true);
+              }}
+            >
+              写真を削除
+            </button>
+          )}
+          <small>
+            JPEG・PNG・WebP、10MBまで。正方形に整え、「変更を保存」で反映します。
+          </small>
         </div>
         <label className="field">
           表示名
@@ -2218,6 +2507,42 @@ function ProfilePage() {
             value={p.name}
             onChange={(e) => setP({ ...p, name: e.target.value })}
           />
+        </label>
+        <div className="form-row profile-location-fields">
+          <label className="field">
+            国籍（必須）
+            <input
+              required
+              maxLength={60}
+              value={p.nationality}
+              placeholder="例：日本"
+              onChange={(e) => setP({ ...p, nationality: e.target.value })}
+            />
+          </label>
+          <label className="field">
+            街（任意）
+            <input
+              maxLength={80}
+              value={p.city}
+              placeholder="例：京都、台北"
+              onChange={(e) => setP({ ...p, city: e.target.value })}
+            />
+          </label>
+        </div>
+        <label className="field">
+          興味のある国・地域
+          <textarea
+            aria-label="興味のある国・地域"
+            rows={2}
+            maxLength={800}
+            value={regionsText}
+            placeholder="例：台湾、韓国、北欧"
+            onChange={(e) => setRegionsText(e.target.value)}
+            aria-describedby="profile-regions-help"
+          />
+          <small id="profile-regions-help">
+            カンマ・読点・改行で区切って、12件まで書けます。
+          </small>
         </label>
         <label className="field">
           自己紹介
@@ -2297,11 +2622,11 @@ function ProfilePage() {
           <span>
             <strong>新しい1対1の会話を受け付ける</strong>
             <small>
-              オンにすると、名前・自己紹介・テーマ・話せる時間・訪問予定が会員の「話せる人」に表示されます。オフにしても、始めた会話は続けられます。
+              オンにすると、国籍・街・興味のある国や地域・写真を含むプロフィールが会員の「話せる人」に表示されます。オフにしても、始めた会話は続けられます。
             </small>
           </span>
         </label>
-        <button className="button primary" disabled={busy}>
+        <button className="button primary" disabled={busy || processingPhoto}>
           {busy ? "保存中…" : "変更を保存"}
           <Check size={16} />
         </button>

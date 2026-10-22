@@ -3588,3 +3588,146 @@ main {
     font-size: 12px;
   }
 }
+
+.avatar > img {
+  width: 100%;
+  height: 100%;
+  border-radius: inherit;
+  object-fit: cover;
+}
+.person-location {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 12px;
+  color: #52604d;
+  flex-wrap: wrap;
+}
+.person-regions > span,
+.my-region-filters > span {
+  font-size: 10px;
+  color: #596654;
+  display: block;
+  margin-bottom: 8px;
+}
+.region-links {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 7px;
+}
+.region-links a {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  padding: 7px 9px;
+  border: 1px solid #dde5d6;
+  border-radius: 9px;
+  background: #f6f8f1;
+  color: #42563c;
+  font-size: 11px;
+  transition:
+    background 0.2s,
+    transform 0.2s;
+}
+.region-links a:hover {
+  transform: translateY(-1px);
+  background: #eaf0e3;
+}
+.member-regions {
+  margin-top: 22px;
+}
+.member-regions h2 {
+  font-size: 13px;
+  margin-bottom: 12px;
+}
+.member-regions > .muted {
+  font-size: 12px;
+}
+.discovery-filters {
+  margin-top: 14px;
+}
+.my-region-filters {
+  margin: 8px 0 18px;
+  padding: 14px;
+  border-radius: 13px;
+  background: #f1f4ec;
+}
+.people-result-count {
+  margin-top: 18px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  font-size: 11px;
+  color: #596654;
+}
+.people-result-count button {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  background: transparent;
+  font-size: 11px;
+  min-height: 32px;
+}
+.profile-photo-controls {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 10px;
+  margin: -8px 0 28px;
+}
+.profile-photo-controls > small {
+  width: 100%;
+  color: #596654;
+  font-size: 11px;
+  line-height: 1.8;
+}
+.photo-input {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  clip-path: inset(50%);
+  overflow: hidden;
+  white-space: nowrap;
+}
+.photo-input:focus-visible + label {
+  outline: 3px solid #76a389;
+  outline-offset: 4px;
+}
+.photo-input:disabled + label {
+  opacity: 0.5;
+  pointer-events: none;
+}
+.profile-form .field > small {
+  color: #596654;
+  font-size: 11px;
+  line-height: 1.8;
+}
+.profile-identity > .avatar {
+  width: 72px;
+  height: 72px;
+  min-width: 72px;
+  font-size: 25px;
+}
+@media (max-width: 760px) {
+  .profile-form .field input,
+  .profile-form .field textarea,
+  .profile-form .field select,
+  .people-tools .field input,
+  .people-tools .field select {
+    font-size: 16px;
+  }
+  .profile-photo-controls {
+    margin-top: 0;
+  }
+  .profile-photo-controls > .button {
+    font-size: 11px;
+  }
+  .discovery-filters {
+    grid-template-columns: 1fr;
+    gap: 0;
+  }
+  .person-location {
+    font-size: 12px;
+  }
+}

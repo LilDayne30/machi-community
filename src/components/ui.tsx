@@ -1,4 +1,4 @@
-import { useEffect, useRef, type ReactNode } from "react";
+import { useEffect, useRef, useState, type ReactNode } from "react";
 import { motion } from "motion/react";
 import { X, ArrowUpRight, Check, MapPin, Clock3 } from "lucide-react";
 import { Link } from "react-router-dom";
@@ -7,18 +7,26 @@ export function Avatar({
   name,
   color = "#dce6de",
   small = false,
+  src,
 }: {
   name: string;
   color?: string;
   small?: boolean;
+  src?: string;
 }) {
+  const [failed, setFailed] = useState(false);
+  useEffect(() => setFailed(false), [src]);
   return (
     <span
       aria-hidden="true"
       className={`avatar ${small ? "small" : ""}`}
       style={{ background: color }}
     >
-      {name.slice(0, 1)}
+      {src && !failed ? (
+        <img src={src} alt="" onError={() => setFailed(true)} />
+      ) : (
+        name.slice(0, 1)
+      )}
     </span>
   );
 }
@@ -26,7 +34,13 @@ export function People({ people }: { people: Person[] }) {
   return (
     <div className="people-stack">
       {people.slice(0, 4).map((p) => (
-        <Avatar key={p.name} name={p.name} color={p.color} small />
+        <Avatar
+          key={p.name}
+          name={p.name}
+          color={p.color}
+          src={p.avatarUrl}
+          small
+        />
       ))}
     </div>
   );

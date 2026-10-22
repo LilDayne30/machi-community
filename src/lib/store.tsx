@@ -18,7 +18,12 @@ import {
 const sample: Bootstrap = {
   mode: "preview",
   user: null,
-  profile: { ...emptyProfile, name: "旅する人" },
+  profile: {
+    ...emptyProfile,
+    name: "旅する人",
+    nationality: "日本",
+    interestedRegions: ["台湾", "韓国"],
+  },
   talks,
   notes,
   rooms,
@@ -27,6 +32,16 @@ const sample: Bootstrap = {
   consultations: [],
   configured: { google: false, stripe: false },
 };
+function upgradeMember(person: CommunityMember): CommunityMember {
+  const seed = sample.people.find((p) => p.id === person.id);
+  return {
+    ...person,
+    nationality: person.nationality ?? seed?.nationality ?? "",
+    city: person.city ?? seed?.city ?? "",
+    interestedRegions:
+      person.interestedRegions ?? seed?.interestedRegions ?? [],
+  };
+}
 export async function api<T>(path: string, init?: RequestInit): Promise<T> {
   const r = await fetch("/api" + path, {
     ...init,
@@ -75,13 +90,18 @@ export function Provider({ children }: { children: ReactNode }) {
             setState({
               ...sample,
               ...s,
-              people: s.people || sample.people,
-              rooms: s.people
+              profile: { ...emptyProfile, ...s.profile },
+              people: (s.people || sample.people).map(upgradeMember),
+              rooms: (s.people
                 ? s.rooms
                 : [
                     ...sample.rooms.filter((r) => r.kind === "direct"),
                     ...(s.rooms || []),
-                  ],
+                  ]
+              ).map((room: Bootstrap["rooms"][number]) => ({
+                ...room,
+                peer: room.peer ? upgradeMember(room.peer) : undefined,
+              })),
               mode: "preview",
               user: null,
               configured: b.configured,
@@ -129,6 +149,10 @@ export function Provider({ children }: { children: ReactNode }) {
   }
   async function startConversation(person: CommunityMember) {
     if (!guard()) return null;
+    if (!data.profile.nationality.trim()) {
+      toast("プロフィールに国籍を登録してください");
+      return null;
+    }
     if (data.mode === "production") {
       const result = await api<{ id: string }>("/conversations", {
         method: "POST",

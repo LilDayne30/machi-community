@@ -224,6 +224,7 @@ test("プロフィールは許可された項目だけ更新し、管理者に�
     headers: auth("a"),
     data: {
       name: "保存された名前",
+      nationality: "日本",
       bio: "紹介",
       relation: "再訪予定",
       interests: ["喫茶店"],
@@ -549,4 +550,207 @@ test("ブロック解除は自分の設定だけを変更し、相手のブロ�
     blocked: false,
     blockedByMe: false,
   });
+});
+
+test("国籍の必須検証と任意の街・複数地域の保存、未登録者の会話を拒否", async ({
+  request,
+}) => {
+  const b = await (
+    await request.get("/api/bootstrap", { headers: auth("photo") })
+  ).json();
+  for (const nationality of ["", "  ", "a".repeat(61)])
+    expect(
+      (
+        await request.put("/api/profile", {
+          headers: auth("photo"),
+          data: { ...b.profile, nationality },
+        })
+      ).status(),
+    ).toBe(400);
+  expect(
+    (
+      await request.put("/api/profile", {
+        headers: auth("photo"),
+        data: {
+          ...b.profile,
+          nationality: " 台湾 ",
+          city: " 台北 ",
+          interestedRegions: [" 日本 ", "韓国"],
+          avatarUrl: "https://tracker.invalid/photo.jpg",
+          acceptsMessages: false,
+        },
+      })
+    ).ok(),
+  ).toBe(true);
+  const saved = await (
+    await request.get("/api/bootstrap", { headers: auth("photo") })
+  ).json();
+  expect(saved.profile).toMatchObject({
+    nationality: "台湾",
+    city: "台北",
+    interestedRegions: ["日本", "韓国"],
+    avatarUrl: "",
+  });
+  expect(
+    (
+      await request.put("/api/profile", {
+        headers: auth("photo"),
+        data: {
+          ...saved.profile,
+          city: "",
+          interestedRegions: Array(13).fill("日本"),
+        },
+      })
+    ).status(),
+  ).toBe(400);
+  expect(
+    (
+      await request.post("/api/conversations", {
+        headers: auth("missing"),
+        data: { personId: "e2e-db" },
+      })
+    ).status(),
+  ).toBe(403);
+  expect(
+    (
+      await request.post("/api/rooms/e2e-shared/messages", {
+        headers: auth("missing"),
+        data: { body: "国籍未登録" },
+      })
+    ).status(),
+  ).toBe(403);
+  const viewer = await (
+    await request.get("/api/bootstrap", { headers: auth("dc") })
+  ).json();
+  expect(viewer.people.some((p: any) => p.id === "e2e-missing")).toBe(false);
+});
+test("写真をD1へ保存し公開範囲・ブロック・所有者だけの削除を守る", async ({
+  request,
+  page,
+}) => {
+  await page.setViewportSize({ width: 64, height: 64 });
+  const jpeg = await page.screenshot({ type: "jpeg" });
+  const upload = await request.put("/api/profile/photo", {
+    headers: { ...auth("photo"), "Content-Type": "image/jpeg" },
+    data: jpeg,
+  });
+  expect(upload.status()).toBe(200);
+  const { avatarUrl } = await upload.json();
+  expect(avatarUrl).toMatch(/^\/api\/avatars\/e2e-photo\?v=/);
+  const own = await request.get(avatarUrl, { headers: auth("photo") });
+  expect(own.status()).toBe(200);
+  expect(own.headers()["content-type"]).toBe("image/jpeg");
+  expect(own.headers()["cache-control"]).toContain("no-store");
+  expect(own.headers()["x-content-type-options"]).toBe("nosniff");
+  expect(await own.body()).toEqual(jpeg);
+  expect((await request.get(avatarUrl)).status()).toBe(401);
+  expect((await request.get(avatarUrl, { headers: auth("dc") })).status()).toBe(
+    404,
+  );
+  const b = await (
+    await request.get("/api/bootstrap", { headers: auth("photo") })
+  ).json();
+  expect(
+    (
+      await request.put("/api/profile", {
+        headers: auth("photo"),
+        data: { ...b.profile, acceptsMessages: true },
+      })
+    ).ok(),
+  ).toBe(true);
+  const viewer = await (
+    await request.get("/api/bootstrap", { headers: auth("dc") })
+  ).json();
+  expect(viewer.people.find((p: any) => p.id === "e2e-photo")).toMatchObject({
+    nationality: "台湾",
+    city: "台北",
+    interestedRegions: ["日本", "韓国"],
+    avatarUrl,
+  });
+  expect((await request.get(avatarUrl, { headers: auth("dc") })).status()).toBe(
+    200,
+  );
+  expect(
+    (
+      await request.post("/api/conversations", {
+        headers: auth("photo"),
+        data: { personId: "e2e-dc" },
+      })
+    ).ok(),
+  ).toBe(true);
+  expect(
+    (
+      await request.post("/api/blocks", {
+        headers: auth("photo"),
+        data: { personId: "e2e-dc" },
+      })
+    ).ok(),
+  ).toBe(true);
+  expect((await request.get(avatarUrl, { headers: auth("dc") })).status()).toBe(
+    404,
+  );
+  await request.delete("/api/blocks/e2e-dc", { headers: auth("photo") });
+  await request.delete("/api/profile/photo?userId=e2e-photo", {
+    headers: auth("dc"),
+  });
+  expect(
+    (await request.get(avatarUrl, { headers: auth("photo") })).status(),
+  ).toBe(200);
+  expect(
+    (
+      await request.delete("/api/profile/photo", { headers: auth("photo") })
+    ).ok(),
+  ).toBe(true);
+  expect(
+    (await request.get(avatarUrl, { headers: auth("photo") })).status(),
+  ).toBe(404);
+});
+test("写真APIで未認証・CSRF・不正形式・偽JPEG・容量超過を拒否", async ({
+  request,
+}) => {
+  const path = "/api/profile/photo";
+  expect(
+    (
+      await request.put(path, {
+        headers: { ...origin, "Content-Type": "image/jpeg" },
+        data: Buffer.from("fake"),
+      })
+    ).status(),
+  ).toBe(401);
+  expect(
+    (
+      await request.put(path, {
+        headers: {
+          ...auth("photo"),
+          Origin: "https://attacker.invalid",
+          "Content-Type": "image/jpeg",
+        },
+        data: Buffer.from("fake"),
+      })
+    ).status(),
+  ).toBe(403);
+  expect(
+    (
+      await request.put(path, {
+        headers: { ...auth("photo"), "Content-Type": "image/svg+xml" },
+        data: "<svg/>",
+      })
+    ).status(),
+  ).toBe(415);
+  expect(
+    (
+      await request.put(path, {
+        headers: { ...auth("photo"), "Content-Type": "image/jpeg" },
+        data: Buffer.from("fake JPEG"),
+      })
+    ).status(),
+  ).toBe(400);
+  expect(
+    (
+      await request.put(path, {
+        headers: { ...auth("photo"), "Content-Type": "image/jpeg" },
+        data: Buffer.alloc(192 * 1024 + 1),
+      })
+    ).status(),
+  ).toBe(413);
 });

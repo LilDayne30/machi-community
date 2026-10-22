@@ -269,3 +269,74 @@ test("実API：相手を選び1対1で往復、履歴と受付設定をD1へ保�
     "再読込なしで届く",
   );
 });
+
+test("実API：国籍・街・興味・写真を登録し、その情報で見つけて会話する", async ({
+  page,
+  context,
+  request,
+}) => {
+  await context.addCookies([
+    { name: "machi_session", value: "e2e-pui", domain: "127.0.0.1", path: "/" },
+  ]);
+  await page.goto("/profile");
+  await page.getByLabel("国籍（必須）", { exact: true }).fill("台湾");
+  await page.getByLabel("街（任意）", { exact: true }).fill("台北");
+  await page
+    .getByLabel("興味のある国・地域", { exact: true })
+    .fill("日本、京都、韓国");
+  await page
+    .getByLabel("プロフィール写真を選ぶ", { exact: true })
+    .setInputFiles("public/icon-192.png");
+  await page.getByLabel("新しい1対1の会話を受け付ける").check();
+  await page.getByRole("button", { name: "変更を保存", exact: true }).click();
+  await expect(page.getByRole("status")).toContainText("保存しました");
+  await page.reload();
+  await expect(page.getByLabel("国籍（必須）", { exact: true })).toHaveValue(
+    "台湾",
+  );
+  await expect(page.locator(".profile-identity img")).toHaveAttribute(
+    "src",
+    /^\/api\/avatars\/e2e-pui\?v=/,
+  );
+  const imageUrl = await page
+    .locator(".profile-identity img")
+    .getAttribute("src");
+  const imageResponse = await request.get(imageUrl!, {
+    headers: { Cookie: "machi_session=e2e-pui" },
+  });
+  expect(imageResponse.headers()["content-type"]).toBe("image/jpeg");
+  expect((await imageResponse.body()).byteLength).toBeLessThan(192 * 1024);
+  await context.addCookies([
+    { name: "machi_session", value: "e2e-dc", domain: "127.0.0.1", path: "/" },
+  ]);
+  await page.goto("/people");
+  await page
+    .getByRole("combobox", { name: "国籍で絞り込む", exact: true })
+    .selectOption("台湾");
+  await page.getByLabel("名前・街・話したいこと", { exact: true }).fill("台北");
+  await page
+    .getByRole("combobox", {
+      name: "興味のある国・地域で絞り込む",
+      exact: true,
+    })
+    .selectOption("京都");
+  await expect(page.locator(".person-card")).toHaveCount(1);
+  await expect(page.locator(".person-card img")).toBeVisible();
+  await page
+    .getByRole("button", {
+      name: "写真と地域のテストさん メッセージ",
+      exact: true,
+    })
+    .click();
+  await expect(page.locator(".chat-header h1")).toHaveText(
+    "写真と地域のテストさん",
+  );
+  await expect(page.locator(".chat-header img")).toBeVisible();
+  await page
+    .getByRole("textbox", { name: "メッセージ", exact: true })
+    .fill("台湾と日本の街歩きについて話したいです");
+  await page
+    .getByRole("button", { name: "メッセージを送信", exact: true })
+    .click();
+  await expect(page.locator(".message.own")).toContainText("台湾と日本");
+});

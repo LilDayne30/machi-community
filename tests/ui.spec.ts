@@ -401,3 +401,100 @@ test("個人会話をブロックし新しい受付を自分で選べる", async
   await page.reload();
   await expect(page.getByLabel("新しい1対1の会話を受け付ける")).toBeChecked();
 });
+
+test("国籍必須・街任意・興味のある地域と写真の保存・削除", async ({ page }) => {
+  await page.goto("/profile");
+  const nationality = page.getByLabel("国籍（必須）", { exact: true });
+  await nationality.fill("");
+  await page.getByRole("button", { name: "変更を保存", exact: true }).click();
+  expect(
+    await nationality.evaluate(
+      (input: HTMLInputElement) => input.validity.valueMissing,
+    ),
+  ).toBe(true);
+  await nationality.fill("台湾");
+  await page.getByLabel("街（任意）", { exact: true }).fill("");
+  await page
+    .getByLabel("興味のある国・地域", { exact: true })
+    .fill("韓国、台湾、韓国\n北欧");
+  await page
+    .getByLabel("プロフィール写真を選ぶ", { exact: true })
+    .setInputFiles("public/icon-192.png");
+  await expect(page.locator(".profile-identity img")).toBeVisible();
+  await page.getByRole("button", { name: "変更を保存", exact: true }).click();
+  await expect(page.getByRole("status")).toContainText(
+    "プロフィールを保存しました",
+  );
+  await page.reload();
+  await expect(nationality).toHaveValue("台湾");
+  await expect(page.getByLabel("街（任意）", { exact: true })).toHaveValue("");
+  await expect(
+    page.getByLabel("興味のある国・地域", { exact: true }),
+  ).toHaveValue("韓国、台湾、北欧");
+  await expect(page.locator(".profile-identity img")).toHaveAttribute(
+    "src",
+    /^data:image\/jpeg;base64,/,
+  );
+  await page.getByRole("button", { name: "写真を削除", exact: true }).click();
+  await page.getByRole("button", { name: "変更を保存", exact: true }).click();
+  await expect(page.getByRole("status")).toContainText("保存しました");
+  await page.reload();
+  await expect(page.locator(".profile-identity img")).toHaveCount(0);
+});
+test("国籍・街・興味のある地域から相手を探し会話を始める", async ({ page }) => {
+  await page.goto("/people");
+  await page
+    .getByRole("combobox", { name: "国籍で絞り込む", exact: true })
+    .selectOption("カナダ");
+  await page.getByLabel("名前・街・話したいこと", { exact: true }).fill("東京");
+  await page
+    .getByRole("combobox", {
+      name: "興味のある国・地域で絞り込む",
+      exact: true,
+    })
+    .selectOption("台湾");
+  await expect(page.locator(".person-card")).toHaveCount(1);
+  await expect(page.locator(".person-card")).toContainText("カナダ · 東京");
+  await page
+    .getByRole("button", { name: "悠太 メッセージ", exact: true })
+    .click();
+  await expect(page.locator(".chat-header h1")).toHaveText("悠太");
+  await page.goto("/people/akari");
+  await page.getByRole("link", { name: "北欧", exact: true }).click();
+  await expect(
+    page.getByRole("combobox", {
+      name: "興味のある国・地域で絞り込む",
+      exact: true,
+    }),
+  ).toHaveValue("北欧");
+  await expect(page.locator(".person-card")).toHaveCount(1);
+  await page
+    .getByRole("button", { name: "あかり メッセージ", exact: true })
+    .click();
+  await expect(page.locator(".chat-header h1")).toHaveText("あかり");
+});
+test("写真の形式と元ファイルのサイズを確認し不正ファイルを保存しない", async ({
+  page,
+}) => {
+  await page.goto("/profile");
+  const input = page.getByLabel("プロフィール写真を選ぶ", { exact: true });
+  await input.setInputFiles({
+    name: "script.svg",
+    mimeType: "image/svg+xml",
+    buffer: Buffer.from(
+      '<svg xmlns="http://www.w3.org/2000/svg"><script>alert(1)</script></svg>',
+    ),
+  });
+  await expect(page.getByRole("status")).toContainText(
+    "JPEG・PNG・WebPの写真を選んでください",
+  );
+  await input.setInputFiles({
+    name: "large.png",
+    mimeType: "image/png",
+    buffer: Buffer.alloc(10 * 1024 * 1024 + 1),
+  });
+  await expect(page.getByRole("status")).toContainText(
+    "10MB以下の写真を選んでください",
+  );
+  await expect(page.locator(".profile-identity img")).toHaveCount(0);
+});

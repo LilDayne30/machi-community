@@ -13,6 +13,8 @@ import {
   sha256,
 } from "./security";
 import { emptyProfile, type CommunityMember } from "../src/lib/data";
+import { MAX_AVATAR_BYTES } from "../src/lib/profile";
+import { readPhoto, validProfileJpeg } from "./photos";
 type User = {
   id: string;
   google_sub: string;
@@ -20,6 +22,7 @@ type User = {
   name: string;
   role: string;
   profile: string;
+  photo_version?: string;
 };
 type Env = {
   DB: D1Database;
@@ -39,8 +42,25 @@ type Env = {
 const app = new Hono<{ Bindings: Env; Variables: { user: User | null } }>();
 const uid = () => crypto.randomUUID();
 const now = () => Math.floor(Date.now() / 1000);
+const avatarUrl = (id: string, version?: string) =>
+  version
+    ? "/api/avatars/" +
+      encodeURIComponent(id) +
+      "?v=" +
+      encodeURIComponent(version)
+    : "";
+function hasNationality(user: Pick<User, "profile">) {
+  const p = parseJSON<{ nationality?: string }>(user.profile, {});
+  return typeof p.nationality === "string" && !!p.nationality.trim();
+}
+function mustProfile(user: User) {
+  if (!hasNationality(user))
+    throw new HTTPException(403, {
+      message: "プロフィールに国籍を登録してからメッセージを送ってください",
+    });
+}
 function publicMember(
-  user: Pick<User, "id" | "name" | "profile">,
+  user: Pick<User, "id" | "name" | "profile" | "photo_version">,
 ): CommunityMember {
   const p = {
     ...emptyProfile,
@@ -54,6 +74,10 @@ function publicMember(
     interests: p.interests,
     availability: p.availability,
     visitDate: p.visitDate,
+    nationality: p.nationality,
+    city: p.city,
+    interestedRegions: p.interestedRegions,
+    avatarUrl: avatarUrl(user.id, user.photo_version),
   };
 }
 async function isBlocked(db: D1Database, a: string, b: string) {
@@ -144,7 +168,11 @@ app.use("/api/*", async (c, next) => {
   c.header("Cache-Control", "no-store");
   c.header("X-Content-Type-Options", "nosniff");
   c.header("Referrer-Policy", "strict-origin-when-cross-origin");
-  if (Number(c.req.header("content-length") || 0) > 20000)
+  const limit =
+    c.req.path === "/api/profile/photo" && c.req.method === "PUT"
+      ? MAX_AVATAR_BYTES
+      : 20000;
+  if (Number(c.req.header("content-length") || 0) > limit)
     return c.json({ error: "リクエストが大きすぎます" }, 413);
   if (
     !["GET", "HEAD", "OPTIONS"].includes(c.req.method) &&
@@ -156,7 +184,7 @@ app.use("/api/*", async (c, next) => {
   const token = getCookie(c, cookieName(c.env));
   if (token)
     user = await c.env.DB.prepare(
-      "SELECT u.* FROM users u JOIN sessions s ON u.id=s.user_id WHERE s.token_hash=? AND s.expires_at>?",
+      "SELECT u.*,p.version photo_version FROM users u JOIN sessions s ON u.id=s.user_id LEFT JOIN profile_photos p ON p.user_id=u.id WHERE s.token_hash=? AND s.expires_at>?",
     )
       .bind(await sha256(token), now())
       .first<User>();
@@ -214,7 +242,7 @@ app.get("/api/bootstrap", async (c) => {
   }));
   const ns = await db
     .prepare(
-      "SELECT n.*,u.name,json_extract(u.profile,'$.relation') role FROM notes n JOIN users u ON u.id=n.author_id WHERE n.published=1 ORDER BY verified_at DESC",
+      "SELECT n.*,u.name,p.version photo_version,json_extract(u.profile,'$.relation') role FROM notes n JOIN users u ON u.id=n.author_id LEFT JOIN profile_photos p ON p.user_id=u.id WHERE n.published=1 ORDER BY verified_at DESC",
     )
     .all<any>();
   const notes = ns.results.map((n) => ({
@@ -227,6 +255,7 @@ app.get("/api/bootstrap", async (c) => {
     verifiedAt: n.verified_at,
     category: n.category,
     relation: n.relation,
+    avatarUrl: avatarUrl(n.author_id, n.photo_version),
   }));
   const ps = await db
     .prepare("SELECT id,name,theme,bio,price FROM providers WHERE verified=1")
@@ -236,7 +265,7 @@ app.get("/api/bootstrap", async (c) => {
     ? (
         await db
           .prepare(
-            "SELECT id,name,profile FROM users WHERE id!=? AND role!='provider' AND json_extract(profile,'$.acceptsMessages')=1 AND id NOT IN (SELECT blocked_id FROM blocks WHERE user_id=? UNION SELECT user_id FROM blocks WHERE blocked_id=?) ORDER BY name LIMIT 100",
+            "SELECT u.id,u.name,u.profile,p.version photo_version FROM users u LEFT JOIN profile_photos p ON p.user_id=u.id WHERE u.id!=? AND u.role!='provider' AND json_extract(u.profile,'$.acceptsMessages')=1 AND length(trim(coalesce(json_extract(u.profile,'$.nationality'),'')))>0 AND u.id NOT IN (SELECT blocked_id FROM blocks WHERE user_id=? UNION SELECT user_id FROM blocks WHERE blocked_id=?) ORDER BY u.name LIMIT 100",
           )
           .bind(u.id, u.id, u.id)
           .all<User>()
@@ -254,13 +283,13 @@ app.get("/api/bootstrap", async (c) => {
     for (const r of rs.results) {
       const peer = await db
         .prepare(
-          "SELECT u.id,u.name,u.profile FROM direct_conversations dc JOIN users u ON u.id=CASE WHEN dc.user_low=? THEN dc.user_high ELSE dc.user_low END WHERE dc.room_id=?",
+          "SELECT u.id,u.name,u.profile,p.version photo_version FROM direct_conversations dc JOIN users u ON u.id=CASE WHEN dc.user_low=? THEN dc.user_high ELSE dc.user_low END LEFT JOIN profile_photos p ON p.user_id=u.id WHERE dc.room_id=?",
         )
         .bind(u.id, r.id)
         .first<User>();
       const ms = await db
         .prepare(
-          `SELECT m.*,u.name FROM messages m JOIN users u ON m.user_id=u.id WHERE m.room_id=? AND m.user_id NOT IN (SELECT blocked_id FROM blocks WHERE user_id=?) ORDER BY m.created_at DESC LIMIT 100`,
+          `SELECT m.*,u.name,p.version photo_version FROM messages m JOIN users u ON m.user_id=u.id LEFT JOIN profile_photos p ON p.user_id=u.id WHERE m.room_id=? AND m.user_id NOT IN (SELECT blocked_id FROM blocks WHERE user_id=?) ORDER BY m.created_at DESC LIMIT 100`,
         )
         .bind(r.id, u.id)
         .all<any>();
@@ -289,6 +318,7 @@ app.get("/api/bootstrap", async (c) => {
         messages: ms.results.reverse().map((m) => ({
           id: m.id,
           author: m.name,
+          avatarUrl: avatarUrl(m.user_id, m.photo_version),
           body: m.body,
           time: new Date(m.created_at + "Z").toLocaleTimeString("ja-JP", {
             hour: "2-digit",
@@ -324,7 +354,12 @@ app.get("/api/bootstrap", async (c) => {
         : "production",
     user: u ? { id: u.id, name: u.name, role: u.role } : null,
     profile: u
-      ? { ...emptyProfile, ...parseJSON(u.profile, {}), name: u.name }
+      ? {
+          ...emptyProfile,
+          ...parseJSON(u.profile, {}),
+          name: u.name,
+          avatarUrl: avatarUrl(u.id, u.photo_version),
+        }
       : emptyProfile,
     talks,
     notes,
@@ -469,7 +504,10 @@ app.get("/api/auth/callback", async (c) => {
     ...options(c.env),
     maxAge: 60 * 60 * 24 * 14,
   });
-  return c.redirect(c.env.APP_ORIGIN + "/");
+  return c.redirect(
+    c.env.APP_ORIGIN +
+      (existing && hasNationality(existing) ? "/" : "/profile"),
+  );
 });
 app.post("/api/auth/logout", async (c) => {
   const s = getCookie(c, cookieName(c.env));
@@ -486,6 +524,12 @@ app.put("/api/profile", async (c) => {
       c,
       z.object({
         name: z.string().trim().min(1).max(40),
+        nationality: z.string().trim().min(1, "国籍を入力してください").max(60),
+        city: z.string().trim().max(80).default(""),
+        interestedRegions: z
+          .array(z.string().trim().min(1).max(60))
+          .max(12)
+          .default([]),
         bio: z.string().max(500),
         relation: z.enum([
           "住んでいる",
@@ -517,9 +561,72 @@ app.put("/api/profile", async (c) => {
     .run();
   return c.json({ ok: true });
 });
+app.put("/api/profile/photo", async (c) => {
+  const u = mustUser(c);
+  if (
+    c.req.header("content-type")?.split(";")[0].trim().toLowerCase() !==
+    "image/jpeg"
+  )
+    throw new HTTPException(415, {
+      message: "写真をJPEG形式で保存してください",
+    });
+  const bytes = await readPhoto(c.req.raw);
+  if (!validProfileJpeg(bytes))
+    throw new HTTPException(400, {
+      message: "512px以下の有効なJPEG写真を選んでください",
+    });
+  const version = uid();
+  await c.env.DB.prepare(
+    "INSERT INTO profile_photos(user_id,content,version) VALUES(?,?,?) ON CONFLICT(user_id) DO UPDATE SET content=excluded.content,version=excluded.version,updated_at=unixepoch()",
+  )
+    .bind(u.id, bytes.buffer, version)
+    .run();
+  return c.json({ avatarUrl: avatarUrl(u.id, version) });
+});
+app.delete("/api/profile/photo", async (c) => {
+  const u = mustUser(c);
+  await c.env.DB.prepare("DELETE FROM profile_photos WHERE user_id=?")
+    .bind(u.id)
+    .run();
+  return c.json({ ok: true });
+});
+app.get("/api/avatars/:id", async (c) => {
+  const u = mustUser(c),
+    targetId = c.req.param("id");
+  const photo = await c.env.DB.prepare(
+    "SELECT p.content,u.profile,EXISTS(SELECT 1 FROM room_members a JOIN room_members b ON a.room_id=b.room_id WHERE a.user_id=? AND b.user_id=u.id) shared,EXISTS(SELECT 1 FROM providers WHERE user_id=u.id AND verified=1) provider,EXISTS(SELECT 1 FROM notes WHERE author_id=u.id AND published=1) published FROM profile_photos p JOIN users u ON u.id=p.user_id WHERE u.id=?",
+  )
+    .bind(u.id, targetId)
+    .first<{
+      content: number[];
+      profile: string;
+      shared: number;
+      provider: number;
+      published: number;
+    }>();
+  const visible =
+    photo &&
+    (targetId === u.id ||
+      (!(await isBlocked(c.env.DB, u.id, targetId)) &&
+        ((parseJSON<{ acceptsMessages?: boolean }>(photo.profile, {})
+          .acceptsMessages &&
+          hasNationality(photo)) ||
+          photo.shared ||
+          photo.provider ||
+          photo.published)));
+  if (!visible || !photo)
+    throw new HTTPException(404, { message: "写真が見つかりません" });
+  c.header("Content-Security-Policy", "default-src 'none'; sandbox");
+  return c.body(new Uint8Array(photo.content), 200, {
+    "Content-Type": "image/jpeg",
+    "Cache-Control": "private, no-store",
+    "Content-Disposition": "inline",
+  });
+});
 app.post("/api/conversations", async (c) => {
   const u = mustUser(c),
     db = c.env.DB;
+  mustProfile(u);
   const { personId } = await json(
     c,
     z.object({ personId: z.string().min(1).max(200) }),
@@ -547,6 +654,7 @@ app.post("/api/conversations", async (c) => {
     .first<{ id: string }>();
   if (existing) return c.json(existing);
   if (
+    !hasNationality(target) ||
     !parseJSON<Partial<typeof emptyProfile>>(target.profile, {}).acceptsMessages
   )
     throw new HTTPException(403, {
@@ -601,6 +709,7 @@ app.post("/api/rooms/:id/messages", async (c) => {
   const u = mustUser(c),
     db = c.env.DB,
     rid = c.req.param("id");
+  mustProfile(u);
   await member(db, u.id, rid);
   const direct = await db
     .prepare(
