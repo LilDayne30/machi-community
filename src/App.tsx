@@ -16,6 +16,7 @@ import {
   ArrowRight,
   ArrowUpRight,
   Bell,
+  BookOpen,
   Bookmark,
   CalendarDays,
   Camera,
@@ -26,6 +27,8 @@ import {
   ChevronRight,
   CircleHelp,
   Coffee,
+  Footprints,
+  GraduationCap,
   Compass,
   Flag,
   Home as HomeIcon,
@@ -39,6 +42,7 @@ import {
   Search,
   Send,
   Settings2,
+  SlidersHorizontal,
   ShieldCheck,
   Sparkles,
   Ticket,
@@ -281,16 +285,33 @@ export default function App() {
             to={n.to}
             className={({ isActive }) => (isActive ? "active" : "")}
           >
-            <n.icon size={20} />
-            <span>
-              {n.label === "プロフィール"
-                ? "マイページ"
-                : n.label === "プロへの相談"
-                  ? "相談"
-                  : n.label === "地域ホーム"
-                    ? "ホーム"
-                    : n.label}
-            </span>
+            {({ isActive }) => (
+              <>
+                {isActive && (
+                  <motion.span
+                    className="bottom-nav-active"
+                    aria-hidden="true"
+                    layoutId="mobile-navigation-surface"
+                    transition={{
+                      type: "spring",
+                      stiffness: 430,
+                      damping: 34,
+                      mass: 0.75,
+                    }}
+                  />
+                )}
+                <n.icon size={20} />
+                <span>
+                  {n.label === "プロフィール"
+                    ? "マイページ"
+                    : n.label === "プロへの相談"
+                      ? "相談"
+                      : n.label === "地域ホーム"
+                        ? "ホーム"
+                        : n.label}
+                </span>
+              </>
+            )}
           </NavLink>
         ))}
       </nav>
@@ -429,8 +450,8 @@ function Home() {
       <section className="home-people">
         <SectionTitle title="話せる人" to="/people" />
         <div className="people-grid">
-          {data.people.slice(0, 3).map((person) => (
-            <MemberCard key={person.id} person={person} />
+          {data.people.slice(0, 3).map((person, index) => (
+            <MemberCard key={person.id} person={person} index={index} />
           ))}
         </div>
         {!data.people.length && (
@@ -1141,13 +1162,72 @@ function ConversationButton({
     </button>
   );
 }
-function MemberCard({ person }: { person: CommunityMember }) {
+function memberTone(id: string) {
+  return ["sage", "apricot", "sky"][
+    Array.from(id).reduce((sum, c) => sum + c.charCodeAt(0), 0) % 3
+  ];
+}
+function RegionCover({ person }: { person: CommunityMember }) {
+  const connection =
+    person.connections.find((c) => c.status === "current") ||
+    person.connections[0];
+  const region = connection && getRegion(connection.regionId);
+  const country = region?.parentId ? getRegion(region.parentId) : region;
+  return (
+    <div className="person-cover" aria-hidden="true">
+      <span className="cover-country">
+        <Globe2 size={13} />
+        {country?.name || "machi."}
+      </span>
+      <Globe2 className="cover-globe" strokeWidth={0.55} />
+      <span className="cover-city">{region?.english || "machi."}</span>
+      <span className="cover-pearl">
+        <MapPin size={23} strokeWidth={1.4} />
+      </span>
+    </div>
+  );
+}
+function InterestIcon({ topic }: { topic: string }) {
+  const Icon =
+    topic === "喫茶店"
+      ? Coffee
+      : topic === "街歩き"
+        ? Footprints
+        : topic === "古本屋"
+          ? BookOpen
+          : topic === "写真"
+            ? Camera
+            : topic === "留学"
+              ? GraduationCap
+              : Globe2;
+  return <Icon size={13} aria-hidden="true" />;
+}
+function MemberCard({
+  person,
+  index = 0,
+}: {
+  person: CommunityMember;
+  index?: number;
+}) {
   return (
     <motion.article
       className="person-card glass"
-      initial={{ opacity: 0, y: 12 }}
-      animate={{ opacity: 1, y: 0 }}
+      data-tone={memberTone(person.id)}
+      initial={{ opacity: 0, y: 20, scale: 0.975 }}
+      animate={{ opacity: 1, y: 0, scale: 1 }}
+      transition={{
+        type: "spring",
+        stiffness: 300,
+        damping: 28,
+        delay: Math.min(index, 4) * 0.055,
+      }}
+      whileHover={{
+        y: -5,
+        transition: { type: "spring", stiffness: 350, damping: 28 },
+      }}
+      whileTap={{ scale: 0.993 }}
     >
+      <RegionCover person={person} />
       <Link
         to={"/people/" + person.id}
         className="person-identity"
@@ -1180,7 +1260,10 @@ function MemberCard({ person }: { person: CommunityMember }) {
       <ResidenceLinks connections={person.connections} compact />
       <div className="person-interests">
         {person.interests.map((interest) => (
-          <span key={interest}>{interest}</span>
+          <span key={interest}>
+            <InterestIcon topic={interest} />
+            {interest}
+          </span>
         ))}
       </div>
       <div className="person-regions">
@@ -1216,6 +1299,7 @@ function Members() {
   const { data } = useApp(),
     [query, setQuery] = useState(""),
     [theme, setTheme] = useState("すべて"),
+    [showFilters, setShowFilters] = useState(false),
     [params, setParams] = useSearchParams();
   const nationality = params.get("nationality") || "",
     region = params.get("region") || "",
@@ -1231,6 +1315,16 @@ function Members() {
     ),
   );
   const places = regionCatalog.filter((r) => placeIds.has(r.id));
+  const appliedFilters = [
+    { key: "nationality", value: nationality, label: nationality },
+    { key: "region", value: region, label: region + "に興味" },
+    { key: "place", value: place, label: regionLabel(place) },
+    {
+      key: "status",
+      value: status,
+      label: residenceLabels[status as keyof typeof residenceLabels] || status,
+    },
+  ].filter((item) => item.value);
   const countries = [
     ...new Set(data.people.map((p) => p.nationality).filter(Boolean)),
   ].sort((a, b) => a.localeCompare(b, "ja"));
@@ -1257,71 +1351,119 @@ function Members() {
         </span>
       </Heading>
       <div className="people-tools glass">
-        <label className="field">
-          名前・街・話したいこと
-          <input
-            type="search"
-            value={query}
-            placeholder="台北、京都、喫茶店…"
-            onChange={(e) => setQuery(e.target.value)}
-          />
-        </label>
-        <div className="form-row discovery-filters">
+        <div className="people-query-row">
           <label className="field">
-            国籍で絞り込む
-            <select
-              value={nationality}
-              onChange={(e) => filter("nationality", e.target.value)}
-            >
-              <option value="">すべての国籍</option>
-              {countries.map((s) => (
-                <option key={s}>{s}</option>
-              ))}
-            </select>
+            名前・街・話したいこと
+            <input
+              type="search"
+              value={query}
+              placeholder="台北、京都、喫茶店…"
+              onChange={(e) => setQuery(e.target.value)}
+            />
           </label>
-          <label className="field">
-            興味のある国・地域で絞り込む
-            <select
-              value={region}
-              onChange={(e) => filter("region", e.target.value)}
-            >
-              <option value="">すべての国・地域</option>
-              {region && !regions.includes(region) && <option>{region}</option>}
-              {regions.map((s) => (
-                <option key={s}>{s}</option>
-              ))}
-            </select>
-          </label>
+          <button
+            className="button subtle filter-toggle"
+            aria-label={showFilters ? "絞り込みを閉じる" : "絞り込みを開く"}
+            aria-expanded={showFilters}
+            aria-controls="people-advanced-filters"
+            onClick={() => setShowFilters(!showFilters)}
+          >
+            <SlidersHorizontal size={17} />
+            <span>絞り込み</span>
+            {appliedFilters.length > 0 && (
+              <span className="filter-count" aria-hidden="true">
+                {appliedFilters.length}
+              </span>
+            )}
+            <ChevronDown size={14} className={showFilters ? "is-open" : ""} />
+          </button>
         </div>
-        <div className="form-row discovery-filters residence-discovery">
-          <label className="field">
-            関わりのある地域
-            <select
-              value={place}
-              onChange={(e) => filter("place", e.target.value)}
-            >
-              <option value="">すべての地域</option>
-              {places.map((r) => (
-                <option key={r.id} value={r.id}>
-                  {regionLabel(r.id)}
-                </option>
-              ))}
-            </select>
-          </label>
-          <label className="field">
-            地域との関わり
-            <select
-              value={status}
-              onChange={(e) => filter("status", e.target.value)}
-            >
-              <option value="">すべての関わり</option>
-              {Object.entries(residenceLabels).map(([value, label]) => (
-                <option key={value} value={value}>
-                  {label}
-                </option>
-              ))}
-            </select>
-          </label>
+        {appliedFilters.length > 0 && (
+          <div className="applied-filters">
+            {appliedFilters.map((item) => (
+              <button
+                key={item.key}
+                aria-label={item.label + "の条件を解除"}
+                onClick={() => filter(item.key, "")}
+              >
+                {item.label}
+                <X size={12} />
+              </button>
+            ))}
+          </div>
+        )}
+        <div id="people-advanced-filters">
+          <AnimatePresence initial={false}>
+            {showFilters && (
+              <motion.div
+                className="people-advanced-filters"
+                initial={{ height: 0, opacity: 0 }}
+                animate={{ height: "auto", opacity: 1 }}
+                exit={{ height: 0, opacity: 0 }}
+                transition={{ duration: 0.28, ease: [0.2, 0.75, 0.25, 1] }}
+              >
+                <div className="form-row discovery-filters">
+                  <label className="field">
+                    国籍で絞り込む
+                    <select
+                      value={nationality}
+                      onChange={(e) => filter("nationality", e.target.value)}
+                    >
+                      <option value="">すべての国籍</option>
+                      {countries.map((s) => (
+                        <option key={s}>{s}</option>
+                      ))}
+                    </select>
+                  </label>
+                  <label className="field">
+                    興味のある国・地域で絞り込む
+                    <select
+                      value={region}
+                      onChange={(e) => filter("region", e.target.value)}
+                    >
+                      <option value="">すべての国・地域</option>
+                      {region && !regions.includes(region) && (
+                        <option>{region}</option>
+                      )}
+                      {regions.map((s) => (
+                        <option key={s}>{s}</option>
+                      ))}
+                    </select>
+                  </label>
+                </div>
+                <div className="form-row discovery-filters residence-discovery">
+                  <label className="field">
+                    関わりのある地域
+                    <select
+                      value={place}
+                      onChange={(e) => filter("place", e.target.value)}
+                    >
+                      <option value="">すべての地域</option>
+                      {places.map((r) => (
+                        <option key={r.id} value={r.id}>
+                          {regionLabel(r.id)}
+                        </option>
+                      ))}
+                    </select>
+                  </label>
+                  <label className="field">
+                    地域との関わり
+                    <select
+                      value={status}
+                      onChange={(e) => filter("status", e.target.value)}
+                    >
+                      <option value="">すべての関わり</option>
+                      {Object.entries(residenceLabels).map(([value, label]) => (
+                        <option key={value} value={value}>
+                          {label}
+                        </option>
+                      ))}
+                    </select>
+                  </label>
+                </div>
+              </motion.div>
+            )}
+          </AnimatePresence>
         </div>
         {data.profile.interestedRegions.length > 0 && (
           <div className="my-region-filters">
@@ -1372,8 +1514,8 @@ function Members() {
         </div>
       </div>
       <div className="people-grid">
-        {list.map((p) => (
-          <MemberCard key={p.id} person={p} />
+        {list.map((p, index) => (
+          <MemberCard key={p.id} person={p} index={index} />
         ))}
       </div>
       {!list.length && (
@@ -1412,7 +1554,11 @@ function MemberDetail() {
         <ArrowLeft size={16} />
         話せる人
       </Link>
-      <article className="member-profile glass">
+      <article
+        className="member-profile glass"
+        data-tone={memberTone(person.id)}
+      >
+        <RegionCover person={person} />
         <div className="member-profile-top">
           <Avatar
             name={person.name}

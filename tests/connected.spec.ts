@@ -1,3 +1,4 @@
+import { openPeopleFilters } from "./helpers";
 import { test, expect } from "@playwright/test";
 // Only the local preview FLAG is changed. Authentication, profiles, room membership,
 // messages, reservations and consultations all use the real local Worker and D1.
@@ -315,10 +316,12 @@ test("実API：国籍・街・興味・写真を登録し、その情報で見�
     { name: "machi_session", value: "e2e-dc", domain: "127.0.0.1", path: "/" },
   ]);
   await page.goto("/people");
+  await openPeopleFilters(page);
   await page
     .getByRole("combobox", { name: "国籍で絞り込む", exact: true })
     .selectOption("台湾");
   await page.getByLabel("名前・街・話したいこと", { exact: true }).fill("台北");
+  await openPeopleFilters(page);
   await page
     .getByRole("combobox", {
       name: "興味のある国・地域で絞り込む",
@@ -406,9 +409,11 @@ test("実API：居住地域と過去の留学を保存し、経験のある相�
     { name: "machi_session", value: "e2e-dc", domain: "127.0.0.1", path: "/" },
   ]);
   await page.goto("/people");
+  await openPeopleFilters(page);
   await page
     .getByRole("combobox", { name: "関わりのある地域", exact: true })
     .selectOption("country:TW");
+  await openPeopleFilters(page);
   await page
     .getByRole("combobox", { name: "地域との関わり", exact: true })
     .selectOption("former");

@@ -1,3 +1,4 @@
+import { openPeopleFilters } from "./helpers";
 import { test, expect } from "@playwright/test";
 import AxeBuilder from "@axe-core/playwright";
 import { emptyProfile } from "../src/lib/data";
@@ -316,6 +317,12 @@ test("アクセシビリティ：ホームと主要画面", async ({ page }) => 
         })),
       })),
     ).toEqual([]);
+    if (path === "/people" || path === "/people/misaki") {
+      await page.screenshot({
+        path: `test-results/${test.info().project.name}-${path.slice(1).replaceAll("/", "-")}-rich.png`,
+        fullPage: false,
+      });
+    }
   }
 });
 
@@ -456,10 +463,12 @@ test("国籍必須・街任意・興味のある地域と写真の保存・削�
 });
 test("国籍・街・興味のある地域から相手を探し会話を始める", async ({ page }) => {
   await page.goto("/people");
+  await openPeopleFilters(page);
   await page
     .getByRole("combobox", { name: "国籍で絞り込む", exact: true })
     .selectOption("カナダ");
   await page.getByLabel("名前・街・話したいこと", { exact: true }).fill("東京");
+  await openPeopleFilters(page);
   await page
     .getByRole("combobox", {
       name: "興味のある国・地域で絞り込む",
@@ -469,11 +478,25 @@ test("国籍・街・興味のある地域から相手を探し会話を始め�
   await expect(page.locator(".person-card")).toHaveCount(1);
   await expect(page.locator(".person-card")).toContainText("カナダ · 東京");
   await page
+    .getByRole("button", { name: "絞り込みを閉じる", exact: true })
+    .click();
+  await expect(
+    page.getByRole("combobox", { name: "国籍で絞り込む", exact: true }),
+  ).toHaveCount(0);
+  await expect(
+    page.getByRole("button", { name: "カナダの条件を解除", exact: true }),
+  ).toBeVisible();
+  await expect(
+    page.getByRole("button", { name: "台湾に興味の条件を解除", exact: true }),
+  ).toBeVisible();
+  await expect(page.locator(".person-card")).toHaveCount(1);
+  await page
     .getByRole("button", { name: "悠太 メッセージ", exact: true })
     .click();
   await expect(page.locator(".chat-header h1")).toHaveText("悠太");
   await page.goto("/people/akari");
   await page.getByRole("link", { name: "北欧", exact: true }).click();
+  await openPeopleFilters(page);
   await expect(
     page.getByRole("combobox", {
       name: "興味のある国・地域で絞り込む",
@@ -597,14 +620,17 @@ test("居住と過去の居住を国・街に紐づけて絞り込み、地域�
   page,
 }) => {
   await page.goto("/people");
+  await openPeopleFilters(page);
   await page
     .getByRole("combobox", { name: "関わりのある地域", exact: true })
     .selectOption("country:TW");
+  await openPeopleFilters(page);
   await page
     .getByRole("combobox", { name: "地域との関わり", exact: true })
     .selectOption("current");
   await expect(page.locator(".person-card")).toHaveCount(1);
   await expect(page.locator(".person-card")).toContainText("あかり");
+  await openPeopleFilters(page);
   await page
     .getByRole("combobox", { name: "地域との関わり", exact: true })
     .selectOption("former");
@@ -612,9 +638,11 @@ test("居住と過去の居住を国・街に紐づけて絞り込み、地域�
   await expect(page.locator(".person-card")).toContainText("美咲");
   await page.goto("/people/akari");
   await page.getByRole("link", { name: /台湾・台北.*住んでいる/ }).click();
+  await openPeopleFilters(page);
   await expect(
     page.getByRole("combobox", { name: "関わりのある地域", exact: true }),
   ).toHaveValue("city:TW:taipei");
+  await openPeopleFilters(page);
   await expect(
     page.getByRole("combobox", { name: "地域との関わり", exact: true }),
   ).toHaveValue("current");
