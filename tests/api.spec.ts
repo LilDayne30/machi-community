@@ -1,4 +1,9 @@
 import { test, expect } from "@playwright/test";
+const adminURL = "http://127.0.0.1:8788/api/admin";
+const adminAuth = (u: string) => ({
+  Origin: "http://127.0.0.1:5174",
+  Cookie: "machi_admin_session=e2e-admin-" + u,
+});
 const origin = { Origin: "http://127.0.0.1:5173" };
 const auth = (user: string) => ({
   ...origin,
@@ -16,7 +21,7 @@ test("未ログインの投稿・予約・相談・管理を拒否", async ({ re
     });
     expect(r.status()).toBe(401);
   }
-  expect((await request.get("/api/admin")).status()).toBe(401);
+  expect((await request.get(adminURL)).status()).toBe(401);
 });
 test("CSRF：別オリジンからの投稿を拒否", async ({ request }) => {
   expect(
@@ -103,10 +108,10 @@ test("通報は読める部屋だけ、一般会員は運営画面を開けな�
     ).status(),
   ).toBe(201);
   expect(
-    (await request.get("/api/admin", { headers: auth("a") })).status(),
+    (await request.get(adminURL, { headers: adminAuth("a") })).status(),
   ).toBe(403);
   const a = await (
-    await request.get("/api/admin", { headers: auth("admin") })
+    await request.get(adminURL, { headers: adminAuth("admin") })
   ).json();
   expect(a.reports.length).toBeGreaterThan(0);
 });
@@ -290,16 +295,16 @@ test("招待・募集・メモ公開は管理者だけ", async ({ request }) => 
   for (const path of ["invitations", "talks", "notes", "providers"])
     expect(
       (
-        await request.post("/api/admin/" + path, {
-          headers: auth("a"),
+        await request.post(adminURL + "/" + path, {
+          headers: adminAuth("a"),
           data: {},
         })
       ).status(),
     ).toBe(403);
   expect(
     (
-      await request.post("/api/admin/invitations", {
-        headers: auth("admin"),
+      await request.post(adminURL + "/invitations", {
+        headers: adminAuth("admin"),
         data: { email: "invited@example.test" },
       })
     ).status(),
@@ -308,8 +313,8 @@ test("招待・募集・メモ公開は管理者だけ", async ({ request }) => 
 test("部屋の組合せは4〜6人・同じトークの参加者のみ", async ({ request }) => {
   expect(
     (
-      await request.post("/api/admin/rooms", {
-        headers: auth("admin"),
+      await request.post(adminURL + "/rooms", {
+        headers: adminAuth("admin"),
         data: { bookingIds: ["one"], title: "不正な小部屋" },
       })
     ).status(),

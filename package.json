@@ -5,7 +5,7 @@
   "type": "module",
   "scripts": {
     "dev": "vite --host 127.0.0.1",
-    "build": "tsc -b && vite build",
+    "build": "tsc -b && vite build && vite build --config vite.admin.config.ts",
     "preview": "vite preview --host 127.0.0.1",
     "api:dev": "wrangler dev --local --port 8787",
     "db:local": "wrangler d1 migrations apply DB --local",
@@ -15,7 +15,10 @@
     "test:unit": "vitest run",
     "test:all": "npm run build && npm run test:unit && npm test",
     "publish:github": "node scripts/publish-github.mjs",
-    "auth:google": "node scripts/setup-google.mjs"
+    "auth:google": "node scripts/setup-google.mjs",
+    "admin:dev": "vite --config vite.admin.config.ts",
+    "admin:api": "wrangler dev --config wrangler.admin.jsonc --local --port 8788",
+    "deploy:admin": "node scripts/check-deploy.mjs wrangler.admin.jsonc && npm run build && wrangler deploy --config wrangler.admin.jsonc"
   },
   "dependencies": {
     "hono": "^4.10.0",

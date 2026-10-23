@@ -257,21 +257,16 @@ test("モーダルをEscapeで閉じる・キーボード操作", async ({ page 
   await expect(page.getByRole("dialog")).toHaveCount(0);
   await expect(page.getByRole("button", { name: "通知を開く" })).toBeFocused();
 });
-test("管理画面の予約・通報・相談・招待フォームに到達", async ({ page }) => {
+test("プロフィールから別サイトの管理画面へ移動", async ({ page }) => {
   await page.goto("/profile");
   await page.getByRole("link", { name: "運営管理", exact: true }).click();
+  await expect(page).toHaveURL("http://127.0.0.1:5174/");
   await expect(
-    page.getByRole("heading", { name: "運営管理", exact: true }),
+    page.getByRole("heading", { name: "概要", exact: true }),
   ).toBeVisible();
-  for (const t of ["通報", "相談", "事業者", "募集・招待", "採算"]) {
-    await page.getByRole("button", { name: t, exact: true }).click();
-    await expect(page.locator(".admin-panel")).toBeVisible();
-  }
-  await page.getByLabel("決済手数料").fill("100");
-  await page.getByLabel("進行役への謝礼").fill("2000");
-  await page.getByLabel("調整の人件費").fill("1000");
-  await page.getByRole("button", { name: "原価を保存" }).click();
-  await expect(page.getByRole("status")).toContainText("原価を記録しました");
+  await expect(page.locator(".preview-bar")).toContainText(
+    "実データは変更されません",
+  );
 });
 test("通信中はスケルトンを表示", async ({ page }) => {
   await page.route("**/api/bootstrap", async (route) => {
@@ -305,7 +300,6 @@ test("アクセシビリティ：ホームと主要画面", async ({ page }) => 
     "/talks",
     "/talks/t1",
     "/notes/n1",
-    "/admin",
     "/consult",
     "/profile",
   ]) {
@@ -332,7 +326,6 @@ test("アクセシビリティ：ホームと主要画面", async ({ page }) => 
         "/profile",
         "/rooms",
         "/consult",
-        "/admin",
         "/talks/t1",
       ].includes(path)
     ) {

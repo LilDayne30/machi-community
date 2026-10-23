@@ -1,0 +1,31 @@
+{
+  "$schema": "node_modules/wrangler/config-schema.json",
+  "name": "machi-admin",
+  "account_id": "68bf290c5634f0a960afc0ab41933f78",
+  "main": "worker/admin.ts",
+  "compatibility_date": "2026-10-01",
+  "compatibility_flags": ["nodejs_compat"],
+  "assets": {
+    "directory": "./dist/admin",
+    "binding": "ASSETS",
+    "not_found_handling": "single-page-application",
+    "run_worker_first": ["/api/*"],
+  },
+  "vars": {
+    "APP_ENV": "production",
+    "DEMO_MODE": "false",
+    "APP_SURFACE": "admin",
+    "ADMIN_EMAIL": "danaoki30@gmail.com",
+    "APP_ORIGIN": "https://machi-admin.danaoki30.workers.dev",
+  },
+  "d1_databases": [
+    {
+      "binding": "DB",
+      "database_name": "machi-community",
+      "database_id": "efcbc39a-9249-47e6-8797-7761af7b80a5",
+      "migrations_dir": "migrations",
+    },
+  ],
+  "ai": { "binding": "AI", "remote": true },
+  "observability": { "enabled": true },
+}

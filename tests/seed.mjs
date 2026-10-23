@@ -8,6 +8,7 @@ const statements = [];
 statements.push("DELETE FROM email_outbox WHERE id LIKE '%e2e%'");
 for (const table of [
   "audit_log",
+  "invitations",
   "costs",
   "reports",
   "consultations",
@@ -21,6 +22,7 @@ for (const table of [
   "bookings",
   "notes",
   "providers",
+  "admin_sessions",
   "sessions",
   "rooms",
   "talks",
@@ -29,6 +31,13 @@ for (const table of [
   statements.push(`DELETE FROM ${table}`);
 for (const [id, name, role] of [
   ["a", "参加者A", "member"],
+  ["status", "利用停止テスト会員", "member"],
+  ["pstatus", "停止検証の事業者", "provider"],
+  ...Array.from({ length: 4 }, (_, i) => [
+    "g" + i,
+    "組合せ検証の会員" + i,
+    "member",
+  ]),
   ["b", "参加者B", "member"],
   ["admin", "運営者", "admin"],
   ["pa", "事業者A", "provider"],
@@ -63,12 +72,22 @@ for (const [id, name, role] of [
     acceptsMessages: ["da", "db", "dc", "dui", "dpeer"].includes(id),
   });
   statements.push(
-    `INSERT INTO users(id,google_sub,email,name,role,profile) VALUES(${q("e2e-" + id)},${q("google-" + id)},${q(id + "@example.test")},${q(name)},${q(role)},${q(profile)})`,
+    `INSERT INTO users(id,google_sub,email,name,role,profile) VALUES(${q("e2e-" + id)},${q("google-" + id)},${q(id === "admin" ? "danaoki30@gmail.com" : id + "@example.test")},${q(name)},${q(role)},${q(profile)})`,
   );
   statements.push(
     `INSERT INTO sessions(token_hash,user_id,expires_at) VALUES(${q(hash("e2e-" + id))},${q("e2e-" + id)},unixepoch()+86400)`,
   );
 }
+for (const id of ["admin", "a"])
+  statements.push(
+    `INSERT INTO admin_sessions(token_hash,user_id,expires_at) VALUES(${q(hash("e2e-admin-" + id))},${q("e2e-" + id)},unixepoch()+86400)`,
+  );
+statements.push(
+  `INSERT INTO users(id,google_sub,email,name,role,profile) VALUES('e2e-outsider','google-outsider','outsider@example.test','未指定管理者','admin','{}'); INSERT INTO admin_sessions(token_hash,user_id,expires_at) VALUES(${q(hash("e2e-admin-outsider"))},'e2e-outsider',unixepoch()+86400)`,
+);
+statements.push(
+  `INSERT INTO admin_sessions(token_hash,user_id,expires_at) VALUES(${q(hash("e2e-admin-expired"))},'e2e-admin',unixepoch()-1)`,
+);
 for (const [id, capacity] of [
   ["free", 6],
   ["other", 6],
@@ -99,6 +118,19 @@ statements.push(
 );
 statements.push(
   "INSERT INTO rooms(id,title,subtitle,image) VALUES('e2e-ui-room','実接続テストの小部屋','テスト','/icon.svg'); INSERT INTO room_members(room_id,user_id) VALUES('e2e-ui-room','e2e-ui'); INSERT INTO messages(id,room_id,user_id,body) VALUES('e2e-ui-m','e2e-ui-room','e2e-ui','共有範囲を選べる自分の投稿です'); INSERT INTO providers(id,user_id,name,theme,bio,price,verified) VALUES('e2e-uip','e2e-uip','実接続テストの相談先','喫茶店','接続試験用です','相談2,000円',1)",
+);
+statements.push(
+  "INSERT INTO talks(id,title,category,starts_at,capacity,price,image,host,description,published) VALUES('e2e-cancel','中止検証のトーク','喫茶店',strftime('%Y-%m-%dT12:00:00Z','now','+15 days'),6,1000,'https://images.unsplash.com/photo-1442512595331-e89e73853f31','運営','中止時の返金と通知を検証します',1); INSERT INTO bookings(id,talk_id,user_id,status,amount,payment_intent) VALUES('e2e-cancel-free','e2e-cancel','e2e-status','confirmed',0,NULL),('e2e-cancel-paid','e2e-cancel','e2e-outsider','confirmed',1000,'pi_e2e_cancel');",
+);
+statements.push(
+  "INSERT INTO talks(id,title,category,starts_at,capacity,price,image,host,description,published) VALUES('e2e-group','組合せ検証のトーク','喫茶店',strftime('%Y-%m-%dT12:00:00Z','now','+12 days'),6,1000,'https://images.unsplash.com/photo-1442512595331-e89e73853f31','運営','小部屋作成を検証するトークです',1)",
+);
+for (let i = 0; i < 4; i++)
+  statements.push(
+    `INSERT INTO bookings(id,talk_id,user_id,status,amount) VALUES('e2e-group-${i}','e2e-group','e2e-g${i}','confirmed',0)`,
+  );
+statements.push(
+  "INSERT INTO providers(id,user_id,name,theme,bio,price,verified) VALUES('e2e-pstatus','e2e-pstatus','停止検証の事業者','喫茶店','停止中の新規相談を検証','相談2,000円',1)",
 );
 mkdirSync(".wrangler", { recursive: true });
 writeFileSync(".wrangler/e2e-fixture.sql", statements.join(";\n") + ";");

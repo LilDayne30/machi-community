@@ -19,6 +19,14 @@
 
 `npm run api:dev` は `wrangler dev --local` を使い、開発・テストをローカルで実行します。Workers AIの実応答を確認する際はCloudflare CLI認証後に `npx wrangler dev --port 8787` でremote bindingを有効にしてください。
 
+## 別管理サイト（2026年10月24日）
+
+管理者ログインは保留中です。`npm run admin:api` と `npm run admin:dev` で、[ローカル管理サイト](http://127.0.0.1:5174/) のサンプルを操作できます。機能・技術選定・認証再開時の注意は [管理サイトの説明](admin.md) に記載しています。
+
+ビルド先を `dist/community` と `dist/admin` に分離しました。利用者向けWorkerは `wrangler.jsonc`、管理用Workerは `wrangler.admin.jsonc` を使います。0005の管理操作用マイグレーションもローカルへ適用済み、本番へ未適用です。公開前に0003〜0005を適用してください。
+
+管理用は `npm run deploy:admin` で別Workerへ配信する構成です。公開予定URLは `https://machi-admin.danaoki30.workers.dev` で、まだ公開していません。ログイン保留中の本番画面はロックされ、管理セッションを発行する経路はありません。利用者向けAPIのCookieでは管理APIを使用できません。定期処理は利用者Workerだけで実行します。
+
 ## 1. GitHub
 
 `gh` を認証し、本人がOAuthの承認を完了します。

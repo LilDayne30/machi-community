@@ -1,8 +1,9 @@
 import { readFileSync } from "node:fs";
 import ts from "typescript";
+const configPath = process.argv[2] || "wrangler.jsonc";
 const parsed = ts.parseConfigFileTextToJson(
-  "wrangler.jsonc",
-  readFileSync("wrangler.jsonc", "utf8"),
+  configPath,
+  readFileSync(configPath, "utf8"),
 );
 if (parsed.error) throw new Error("wrangler.jsoncを読み込めません。");
 const c = parsed.config;

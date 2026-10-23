@@ -7,6 +7,7 @@ export default defineConfig({
   timeout: 60000,
   expect: { timeout: 10000 },
   globalSetup: "./tests/global-setup.ts",
+  globalTeardown: "./tests/global-teardown.ts",
   reporter: [
     ["list"],
     ["html", { open: "never" }],
@@ -18,6 +19,11 @@ export default defineConfig({
     screenshot: "only-on-failure",
   },
   projects: [
+    {
+      name: "admin-production",
+      testMatch: "admin-production.spec.ts",
+      use: { baseURL: "http://127.0.0.1:4174" },
+    },
     {
       name: "desktop-chromium",
       testMatch: "ui.spec.ts",
@@ -40,12 +46,58 @@ export default defineConfig({
       },
     },
     {
+      name: "admin-desktop",
+      testMatch: "admin.spec.ts",
+      use: {
+        baseURL: "http://127.0.0.1:5174",
+        viewport: { width: 1440, height: 1000 },
+      },
+    },
+    {
+      name: "admin-mobile",
+      testMatch: "admin.spec.ts",
+      use: {
+        ...devices["iPhone 13"],
+        defaultBrowserType: "chromium",
+        baseURL: "http://127.0.0.1:5174",
+      },
+    },
+    {
+      name: "admin-connected",
+      testMatch: "admin-connected.spec.ts",
+      use: { baseURL: "http://127.0.0.1:5174" },
+    },
+    {
+      name: "admin-api",
+      testMatch: "admin-api.spec.ts",
+      use: { baseURL: "http://127.0.0.1:8788" },
+    },
+    {
       name: "worker-api",
       testMatch: "api.spec.ts",
       use: { baseURL: "http://127.0.0.1:8787" },
     },
   ],
   webServer: [
+    {
+      command:
+        "npx vite preview --config vite.admin.config.ts --host 127.0.0.1 --port 4174",
+      url: "http://127.0.0.1:4174",
+      reuseExistingServer: !process.env.CI,
+      timeout: 90000,
+    },
+    {
+      command: "npm run admin:api",
+      url: "http://127.0.0.1:8788/api/health",
+      reuseExistingServer: !process.env.CI,
+      timeout: 90000,
+    },
+    {
+      command: "npm run admin:dev",
+      url: "http://127.0.0.1:5174",
+      reuseExistingServer: !process.env.CI,
+      timeout: 90000,
+    },
     {
       command: "npm run api:dev",
       url: "http://127.0.0.1:8787/api/health",

@@ -32,8 +32,9 @@ type User = {
   profile: string;
   photo_version?: string;
   connections?: string;
+  account_status?: string;
 };
-type Env = {
+export type Env = {
   DB: D1Database;
   ASSETS: Fetcher;
   AI: Ai;
@@ -43,6 +44,8 @@ type Env = {
   GOOGLE_CLIENT_ID?: string;
   GOOGLE_CLIENT_SECRET?: string;
   ADMIN_EMAIL?: string;
+  ADMIN_EMAILS?: string;
+  APP_SURFACE?: string;
   STRIPE_SECRET_KEY?: string;
   STRIPE_WEBHOOK_SECRET?: string;
   RESEND_API_KEY?: string;
@@ -99,8 +102,20 @@ async function isBlocked(db: D1Database, a: string, b: string) {
     .bind(a, b, b, a)
     .first());
 }
-const cookieName = (e: Env) =>
-  e.APP_ENV === "development" ? "machi_session" : "__Host-machi_session";
+const cookieName = (e: Env) => {
+  const name =
+    e.APP_SURFACE === "admin" ? "machi_admin_session" : "machi_session";
+  return e.APP_ENV === "development" ? name : "__Host-" + name;
+};
+const sessionTable = (e: Env) =>
+  e.APP_SURFACE === "admin" ? "admin_sessions" : "sessions";
+const allowedAdmin = (e: Env, u: User) =>
+  u.role === "admin" &&
+  (e.ADMIN_EMAILS || e.ADMIN_EMAIL || "")
+    .split(",")
+    .map((v) => v.trim().toLowerCase())
+    .filter(Boolean)
+    .includes(u.email.toLowerCase());
 const options = (e: Env) => ({
   httpOnly: true,
   secure: e.APP_ENV !== "development",
@@ -127,7 +142,7 @@ const mustUser = (c: any): User => {
 };
 const mustAdmin = (c: any): User => {
   const u = mustUser(c);
-  if (u.role !== "admin")
+  if (!allowedAdmin(c.env, u))
     throw new HTTPException(403, { message: "運営者のみ利用できます" });
   return u;
 };
@@ -179,6 +194,18 @@ app.use("/api/*", async (c, next) => {
   c.header("Cache-Control", "no-store");
   c.header("X-Content-Type-Options", "nosniff");
   c.header("Referrer-Policy", "strict-origin-when-cross-origin");
+  const adminPath =
+    c.req.path === "/api/admin" || c.req.path.startsWith("/api/admin/");
+  if (c.env.APP_SURFACE === "admin") {
+    if (
+      c.req.path === "/api/auth/google" ||
+      c.req.path === "/api/auth/callback"
+    )
+      return c.json({ error: "管理者ログインは保留中です" }, 503);
+    if (!adminPath && !["/api/health", "/api/auth/logout"].includes(c.req.path))
+      return c.json({ error: "APIが見つかりません" }, 404);
+  } else if (adminPath)
+    return c.json({ error: "管理機能は管理サイトへ移動しました" }, 404);
   const limit =
     c.req.path === "/api/profile/photo" && c.req.method === "PUT"
       ? MAX_AVATAR_BYTES
@@ -195,12 +222,19 @@ app.use("/api/*", async (c, next) => {
   const token = getCookie(c, cookieName(c.env));
   if (token)
     user = await c.env.DB.prepare(
-      `SELECT u.*,p.version photo_version,${connectionsSQL} FROM users u JOIN sessions s ON u.id=s.user_id LEFT JOIN profile_photos p ON p.user_id=u.id WHERE s.token_hash=? AND s.expires_at>?`,
+      `SELECT u.*,p.version photo_version,${connectionsSQL} FROM users u JOIN ${sessionTable(c.env)} s ON u.id=s.user_id LEFT JOIN profile_photos p ON p.user_id=u.id WHERE s.token_hash=? AND s.expires_at>? AND u.account_status='active'`,
     )
       .bind(await sha256(token), now())
       .first<User>();
   c.set("user", user);
   await next();
+});
+app.get("/api/admin/session", (c) => {
+  const u = c.get("user");
+  return c.json({
+    authenticated: !!u && allowedAdmin(c.env, u),
+    loginDeferred: true,
+  });
 });
 app.get("/api/health", (c) => c.json({ ok: true, service: "machi" }));
 app.get("/api/bootstrap", async (c) => {
@@ -269,14 +303,16 @@ app.get("/api/bootstrap", async (c) => {
     avatarUrl: avatarUrl(n.author_id, n.photo_version),
   }));
   const ps = await db
-    .prepare("SELECT id,name,theme,bio,price FROM providers WHERE verified=1")
+    .prepare(
+      "SELECT p.id,p.name,p.theme,p.bio,p.price FROM providers p JOIN users u ON u.id=p.user_id WHERE p.verified=1 AND u.account_status='active'",
+    )
     .all<any>();
   const rooms = [];
   const people = u
     ? (
         await db
           .prepare(
-            `SELECT u.id,u.name,u.profile,p.version photo_version,${connectionsSQL} FROM users u LEFT JOIN profile_photos p ON p.user_id=u.id WHERE u.id!=? AND u.role!='provider' AND json_extract(u.profile,'$.acceptsMessages')=1 AND length(trim(coalesce(json_extract(u.profile,'$.nationality'),'')))>0 AND u.id NOT IN (SELECT blocked_id FROM blocks WHERE user_id=? UNION SELECT user_id FROM blocks WHERE blocked_id=?) ORDER BY u.name LIMIT 100`,
+            `SELECT u.id,u.name,u.profile,p.version photo_version,${connectionsSQL} FROM users u LEFT JOIN profile_photos p ON p.user_id=u.id WHERE u.id!=? AND u.account_status='active' AND u.role!='provider' AND json_extract(u.profile,'$.acceptsMessages')=1 AND length(trim(coalesce(json_extract(u.profile,'$.nationality'),'')))>0 AND u.id NOT IN (SELECT blocked_id FROM blocks WHERE user_id=? UNION SELECT user_id FROM blocks WHERE blocked_id=?) ORDER BY u.name LIMIT 100`,
           )
           .bind(u.id, u.id, u.id)
           .all<User>()
@@ -475,6 +511,8 @@ app.get("/api/auth/callback", async (c) => {
       .prepare("SELECT * FROM users WHERE google_sub=?")
       .bind(payload.sub)
       .first<User>();
+  if (existing?.account_status === "suspended")
+    throw new HTTPException(403, { message: "このアカウントは利用停止中です" });
   const isAdmin = email === c.env.ADMIN_EMAIL?.toLowerCase();
   if (
     !existing &&
@@ -530,7 +568,9 @@ app.get("/api/auth/callback", async (c) => {
 app.post("/api/auth/logout", async (c) => {
   const s = getCookie(c, cookieName(c.env));
   if (s)
-    await c.env.DB.prepare("DELETE FROM sessions WHERE token_hash=?")
+    await c.env.DB.prepare(
+      `DELETE FROM ${sessionTable(c.env)} WHERE token_hash=?`,
+    )
       .bind(await sha256(s))
       .run();
   deleteCookie(c, cookieName(c.env), { ...options(c.env) });
@@ -713,7 +753,9 @@ app.post("/api/conversations", async (c) => {
       message: "事業者への連絡はプロ相談から行います",
     });
   const target = await db
-    .prepare("SELECT * FROM users WHERE id=? AND role!='provider'")
+    .prepare(
+      "SELECT * FROM users WHERE id=? AND account_status='active' AND role!='provider'",
+    )
     .bind(personId)
     .first<User>();
   if (!target || (await isBlocked(db, u.id, personId)))
@@ -1116,7 +1158,7 @@ app.post("/api/consultations", async (c) => {
       }),
     );
   const provider = await c.env.DB.prepare(
-    "SELECT * FROM providers WHERE id=? AND verified=1",
+    "SELECT p.* FROM providers p JOIN users u ON u.id=p.user_id WHERE p.id=? AND p.verified=1 AND u.account_status='active'",
   )
     .bind(p.provider)
     .first<any>();
@@ -1196,7 +1238,7 @@ app.post("/api/stripe/webhook", async (c) => {
     const s = event.data.object as Stripe.Checkout.Session;
     const b = await db
       .prepare(
-        "SELECT b.*,u.email FROM bookings b JOIN users u ON u.id=b.user_id WHERE b.id=?",
+        "SELECT b.*,u.email,t.cancelled_at FROM bookings b JOIN users u ON u.id=b.user_id JOIN talks t ON t.id=b.talk_id WHERE b.id=?",
       )
       .bind(s.metadata?.bookingId || "")
       .first<any>();
@@ -1214,25 +1256,28 @@ app.post("/api/stripe/webhook", async (c) => {
       typeof s.payment_intent === "string"
         ? s.payment_intent
         : s.payment_intent?.id || null;
-    const valid = b.status === "pending" && b.expires_at > now();
+    const valid =
+      b.status === "pending" && b.expires_at > now() && !b.cancelled_at;
     if (b.status === "pending" || b.status === "cancelled") {
       await db.batch([
         db
           .prepare(
-            "UPDATE bookings SET status=?,payment_intent=? WHERE id=? AND status IN ('pending','cancelled')",
+            "UPDATE bookings SET status=CASE WHEN status='pending' AND NOT EXISTS(SELECT 1 FROM talks WHERE talks.id=bookings.talk_id AND cancelled_at IS NOT NULL) THEN ? ELSE 'refund_pending' END,payment_intent=? WHERE id=? AND status IN ('pending','cancelled')",
           )
           .bind(valid ? "confirmed" : "refund_pending", pi, b.id),
-        queue(
-          db,
-          "paid:" + b.id,
-          b.email,
-          valid
-            ? "machi：参加が確定しました"
-            : "machi：返金手続きを受け付けました",
-          valid
-            ? "<p>入金を確認しました。開催前に会議リンクをお送りします。</p>"
-            : "<p>予約の保持期限を過ぎたため返金します。</p>",
-        ),
+        db
+          .prepare(
+            "INSERT OR IGNORE INTO email_outbox(id,recipient,subject,body) SELECT ?,?,CASE WHEN status='confirmed' THEN ? ELSE ? END,CASE WHEN status='confirmed' THEN ? ELSE ? END FROM bookings WHERE id=?",
+          )
+          .bind(
+            "paid:" + b.id,
+            b.email,
+            "machi：参加が確定しました",
+            "machi：返金手続きを受け付けました",
+            "<p>入金を確認しました。開催前に会議リンクをお送りします。</p>",
+            "<p>予約を確定できなかったため返金します。</p>",
+            b.id,
+          ),
       ]);
     }
   }
@@ -1254,48 +1299,113 @@ app.post("/api/stripe/webhook", async (c) => {
 app.get("/api/admin", async (c) => {
   mustAdmin(c);
   const db = c.env.DB;
-  const [bs, rs, cs, ps, bm, cm, rev, reconnect, costs, refunds] =
-    await Promise.all([
-      db
-        .prepare(
-          "SELECT b.*,b.talk_id talkId,u.name FROM bookings b JOIN users u ON b.user_id=u.id ORDER BY b.created_at DESC LIMIT 300",
-        )
-        .all<any>(),
-      db
-        .prepare(
-          "SELECT r.*,m.body FROM reports r JOIN messages m ON r.message_id=m.id ORDER BY r.created_at DESC LIMIT 100",
-        )
-        .all<any>(),
-      db
-        .prepare(
-          "SELECT * FROM consultations ORDER BY created_at DESC LIMIT 100",
-        )
-        .all<any>(),
-      db.prepare("SELECT * FROM providers").all<any>(),
-      db.prepare("SELECT count(*) n FROM bookings").first<any>(),
-      db.prepare("SELECT count(*) n FROM consultations").first<any>(),
-      db
-        .prepare(
-          "SELECT coalesce(sum(amount),0) n FROM bookings WHERE payment_intent IS NOT NULL",
-        )
-        .first<any>(),
-      db
-        .prepare(
-          `SELECT count(DISTINCT m.user_id || ':' || m.room_id) n FROM messages m WHERE EXISTS(SELECT 1 FROM messages m0 WHERE m0.user_id=m.user_id AND m0.room_id=m.room_id AND datetime(m0.created_at,'+14 days')<=datetime(m.created_at)) AND EXISTS(SELECT 1 FROM messages peer WHERE peer.room_id=m.room_id AND peer.user_id!=m.user_id AND datetime(peer.created_at)>=datetime(m.created_at,'-1 day'))`,
-        )
-        .first<any>(),
-      db
-        .prepare(
-          "SELECT fees,reward,labor FROM costs ORDER BY created_at DESC,rowid DESC LIMIT 1",
-        )
-        .first<any>(),
-      db
-        .prepare(
-          "SELECT coalesce(sum(amount),0) n FROM bookings WHERE status='refunded'",
-        )
-        .first<any>(),
-    ]);
+  const [
+    bs,
+    rs,
+    cs,
+    ps,
+    bm,
+    cm,
+    rev,
+    reconnect,
+    costs,
+    refunds,
+    members,
+    talks,
+    notes,
+    invitations,
+    emails,
+    logs,
+    rooms,
+  ] = await Promise.all([
+    db
+      .prepare(
+        "SELECT b.id,b.talk_id talkId,b.user_id,b.status,b.amount,b.created_at,u.name,t.title talk_title FROM bookings b JOIN users u ON b.user_id=u.id JOIN talks t ON t.id=b.talk_id ORDER BY b.created_at DESC LIMIT 300",
+      )
+      .all<any>(),
+    db
+      .prepare(
+        "SELECT r.*,m.body FROM reports r JOIN messages m ON r.message_id=m.id ORDER BY r.created_at DESC LIMIT 100",
+      )
+      .all<any>(),
+    db
+      .prepare(
+        "SELECT c.*,u.name,p.name provider_name FROM consultations c JOIN users u ON u.id=c.user_id JOIN providers p ON p.id=c.provider_id ORDER BY c.created_at DESC LIMIT 100",
+      )
+      .all<any>(),
+    db.prepare("SELECT * FROM providers").all<any>(),
+    db.prepare("SELECT count(*) n FROM bookings").first<any>(),
+    db.prepare("SELECT count(*) n FROM consultations").first<any>(),
+    db
+      .prepare(
+        "SELECT coalesce(sum(amount),0) n FROM bookings WHERE payment_intent IS NOT NULL",
+      )
+      .first<any>(),
+    db
+      .prepare(
+        `SELECT count(DISTINCT m.user_id || ':' || m.room_id) n FROM messages m WHERE EXISTS(SELECT 1 FROM messages m0 WHERE m0.user_id=m.user_id AND m0.room_id=m.room_id AND datetime(m0.created_at,'+14 days')<=datetime(m.created_at)) AND EXISTS(SELECT 1 FROM messages peer WHERE peer.room_id=m.room_id AND peer.user_id!=m.user_id AND datetime(peer.created_at)>=datetime(m.created_at,'-1 day'))`,
+      )
+      .first<any>(),
+    db
+      .prepare(
+        "SELECT fees,reward,labor FROM costs ORDER BY created_at DESC,rowid DESC LIMIT 1",
+      )
+      .first<any>(),
+    db
+      .prepare(
+        "SELECT coalesce(sum(amount),0) n FROM bookings WHERE status='refunded'",
+      )
+      .first<any>(),
+    db
+      .prepare(
+        "SELECT id,email,name,role,profile,account_status,status_reason,created_at FROM users ORDER BY created_at DESC LIMIT 500",
+      )
+      .all<any>(),
+    db
+      .prepare(
+        "SELECT t.*, (SELECT count(*) FROM bookings b WHERE b.talk_id=t.id AND b.status IN ('confirmed','attended')) occupied FROM talks t ORDER BY starts_at DESC LIMIT 300",
+      )
+      .all<any>(),
+    db
+      .prepare("SELECT * FROM notes ORDER BY verified_at DESC LIMIT 300")
+      .all<any>(),
+    db
+      .prepare(
+        "SELECT email,expires_at,used_at FROM invitations ORDER BY expires_at DESC LIMIT 300",
+      )
+      .all<any>(),
+    db
+      .prepare(
+        "SELECT id,recipient,subject,status,attempts,created_at,sent_at FROM email_outbox ORDER BY created_at DESC LIMIT 300",
+      )
+      .all<any>(),
+    db
+      .prepare(
+        "SELECT a.*,u.name actor_name FROM audit_log a JOIN users u ON a.actor_id=u.id ORDER BY a.created_at DESC,a.rowid DESC LIMIT 300",
+      )
+      .all<any>(),
+    db
+      .prepare(
+        "SELECT r.id,r.title,r.subtitle,r.created_at,(SELECT count(*) FROM room_members rm WHERE rm.room_id=r.id) member_count FROM rooms r WHERE NOT EXISTS(SELECT 1 FROM direct_conversations dc WHERE dc.room_id=r.id) ORDER BY r.created_at DESC LIMIT 100",
+      )
+      .all<any>(),
+  ]);
   return c.json({
+    members: members.results.map((m) => ({
+      ...m,
+      profile: parseJSON(m.profile, {}),
+    })),
+    talks: talks.results,
+    notes: notes.results,
+    invitations: invitations.results,
+    emails: emails.results,
+    logs: logs.results,
+    rooms: rooms.results,
+    connections: {
+      stripe: !!c.env.STRIPE_SECRET_KEY,
+      email: !!(c.env.RESEND_API_KEY && c.env.EMAIL_FROM),
+      ai: !!c.env.AI,
+    },
     bookings: bs.results,
     reports: rs.results,
     consultations: cs.results,
@@ -1311,6 +1421,203 @@ app.get("/api/admin", async (c) => {
     },
   });
 });
+app.patch("/api/admin/members/:id", async (c) => {
+  const actor = mustAdmin(c),
+    id = c.req.param("id"),
+    db = c.env.DB;
+  const p = await json(
+    c,
+    z.object({
+      status: z.enum(["active", "suspended"]),
+      reason: z.string().trim().min(3).max(300),
+    }),
+  );
+  const target = await db
+    .prepare("SELECT id,role FROM users WHERE id=?")
+    .bind(id)
+    .first<any>();
+  if (!target)
+    throw new HTTPException(404, { message: "会員が見つかりません" });
+  if (target.role === "admin" || actor.id === id)
+    throw new HTTPException(409, {
+      message: "管理者アカウントはこの画面から変更できません",
+    });
+  await db.batch([
+    db
+      .prepare("UPDATE users SET account_status=?,status_reason=? WHERE id=?")
+      .bind(p.status, p.reason, id),
+    ...(p.status === "suspended"
+      ? [
+          db.prepare("DELETE FROM sessions WHERE user_id=?").bind(id),
+          db.prepare("DELETE FROM admin_sessions WHERE user_id=?").bind(id),
+        ]
+      : []),
+  ]);
+  await audit(db, actor, "member:" + p.status, id);
+  return c.json({ ok: true });
+});
+app.delete("/api/admin/invitations/:email", async (c) => {
+  const u = mustAdmin(c),
+    email = c.req.param("email").toLowerCase();
+  await c.env.DB.prepare(
+    "UPDATE invitations SET expires_at=datetime('now','-1 second') WHERE email=? AND used_at IS NULL",
+  )
+    .bind(email)
+    .run();
+  await audit(c.env.DB, u, "revoke_invitation", email);
+  return c.json({ ok: true });
+});
+app.patch("/api/admin/talks/:id", async (c) => {
+  const u = mustAdmin(c),
+    db = c.env.DB,
+    id = c.req.param("id");
+  const p = await json(
+    c,
+    z.union([
+      z.object({ published: z.boolean() }).strict(),
+      z
+        .object({
+          title: z.string().trim().min(1).max(100),
+          category: z.enum(["喫茶店", "街歩き", "古本屋"]),
+          host: z.string().trim().min(1).max(40),
+          description: z.string().trim().min(10).max(2000),
+        })
+        .strict(),
+    ]),
+  );
+  const t = await db
+    .prepare("SELECT cancelled_at FROM talks WHERE id=?")
+    .bind(id)
+    .first<any>();
+  if (!t) throw new HTTPException(404, { message: "トークが見つかりません" });
+  if (t.cancelled_at)
+    throw new HTTPException(409, {
+      message: "中止済みのトークは変更できません",
+    });
+  if ("published" in p)
+    await db
+      .prepare("UPDATE talks SET published=? WHERE id=?")
+      .bind(Number(p.published), id)
+      .run();
+  else
+    await db
+      .prepare(
+        "UPDATE talks SET title=?,category=?,host=?,description=? WHERE id=?",
+      )
+      .bind(p.title, p.category, p.host, p.description, id)
+      .run();
+  await audit(db, u, "update_talk", id);
+  return c.json({ ok: true });
+});
+app.post("/api/admin/talks/:id/cancel", async (c) => {
+  const u = mustAdmin(c),
+    db = c.env.DB,
+    id = c.req.param("id");
+  const p = await json(
+    c,
+    z.object({ reason: z.string().trim().min(3).max(500) }),
+  );
+  const t = await db
+    .prepare("SELECT * FROM talks WHERE id=?")
+    .bind(id)
+    .first<any>();
+  if (!t) throw new HTTPException(404, { message: "トークが見つかりません" });
+  if (t.cancelled_at) return c.json({ ok: true });
+  const bs = await db
+    .prepare(
+      "SELECT b.id,u.email FROM bookings b JOIN users u ON u.id=b.user_id WHERE b.talk_id=? AND b.status IN ('pending','confirmed')",
+    )
+    .bind(id)
+    .all<any>();
+  await db.batch([
+    db
+      .prepare(
+        "UPDATE talks SET published=0,cancelled_at=CURRENT_TIMESTAMP,cancellation_reason=? WHERE id=? AND cancelled_at IS NULL",
+      )
+      .bind(p.reason, id),
+    db
+      .prepare(
+        "UPDATE bookings SET status=CASE WHEN status='confirmed' AND payment_intent IS NOT NULL THEN 'refund_pending' ELSE 'cancelled' END WHERE talk_id=? AND status IN ('pending','confirmed')",
+      )
+      .bind(id),
+    ...bs.results.map((b) =>
+      queue(
+        db,
+        "cancel:" + b.id,
+        b.email,
+        "machi：地域トークの中止",
+        "<p>" +
+          safeText(t.title) +
+          "</p><p>" +
+          safeText(p.reason) +
+          "</p><p>決済済みの予約は返金手続きを行います。</p>",
+      ),
+    ),
+  ]);
+  await audit(db, u, "cancel_talk", id);
+  return c.json({ ok: true });
+});
+app.patch("/api/admin/notes/:id", async (c) => {
+  const u = mustAdmin(c),
+    db = c.env.DB,
+    id = c.req.param("id");
+  const p = await json(
+    c,
+    z.union([
+      z.object({ published: z.boolean() }).strict(),
+      z
+        .object({
+          title: z.string().trim().min(1).max(100),
+          body: z.string().trim().min(1).max(3000),
+          verifiedAt: z.string().regex(/^\d{4}-\d{2}-\d{2}$/),
+          relation: z.string().trim().min(1).max(200),
+        })
+        .strict(),
+    ]),
+  );
+  if (!(await db.prepare("SELECT 1 FROM notes WHERE id=?").bind(id).first()))
+    throw new HTTPException(404, { message: "メモが見つかりません" });
+  if ("published" in p)
+    await db
+      .prepare("UPDATE notes SET published=? WHERE id=?")
+      .bind(Number(p.published), id)
+      .run();
+  else
+    await db
+      .prepare(
+        "UPDATE notes SET title=?,body=?,verified_at=?,relation=? WHERE id=?",
+      )
+      .bind(p.title, p.body, p.verifiedAt, p.relation, id)
+      .run();
+  await audit(db, u, "update_note", id);
+  return c.json({ ok: true });
+});
+app.post("/api/admin/emails/:id/retry", async (c) => {
+  const u = mustAdmin(c),
+    id = c.req.param("id"),
+    db = c.env.DB;
+  if (!c.env.RESEND_API_KEY || !c.env.EMAIL_FROM)
+    throw new HTTPException(503, {
+      message: "メール配信はまだ接続されていません",
+    });
+  const mail = await db
+    .prepare("SELECT status FROM email_outbox WHERE id=?")
+    .bind(id)
+    .first<any>();
+  if (!mail)
+    throw new HTTPException(404, { message: "メールが見つかりません" });
+  if (mail.status === "sent")
+    throw new HTTPException(409, { message: "送信済みメールは再送できません" });
+  await db
+    .prepare(
+      "UPDATE email_outbox SET attempts=0 WHERE id=? AND status='pending'",
+    )
+    .bind(id)
+    .run();
+  await audit(db, u, "retry_email", id);
+  return c.json({ ok: true });
+});
+
 app.patch("/api/admin/reports/:id", async (c) => {
   const u = mustAdmin(c);
   await json(c, z.object({ status: z.literal("resolved") }));
@@ -1498,6 +1805,7 @@ app.post("/api/admin/costs", async (c) => {
   )
     .bind(uid(), p.fees, p.reward, p.labor, u.id)
     .run();
+  await audit(c.env.DB, u, "save_costs", "costs");
   return c.json({ ok: true }, 201);
 });
 app.post("/api/admin/invitations", async (c) => {
@@ -1508,6 +1816,7 @@ app.post("/api/admin/invitations", async (c) => {
   )
     .bind(p.email.toLowerCase(), u.id)
     .run();
+  await audit(c.env.DB, u, "invite_member", p.email.toLowerCase());
   return c.json({ ok: true }, 201);
 });
 app.post("/api/admin/talks", async (c) => {

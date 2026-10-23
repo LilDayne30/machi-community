@@ -28,6 +28,7 @@ function database() {
     "0002_direct_conversations.sql",
     "0003_profile_photos.sql",
     "0004_region_connections.sql",
+    "0005_admin_operations.sql",
   ])
     db.exec(readFileSync("migrations/" + file, "utf8"));
   db.exec(

@@ -3,6 +3,7 @@ import { DatabaseSync } from "node:sqlite";
 import { readFileSync } from "node:fs";
 import Stripe from "stripe";
 import worker from "../worker/index";
+import adminWorker from "../worker/admin";
 // Real SQL schema in memory; no external requests and no real payment credentials.
 class Statement {
   constructor(
@@ -97,6 +98,7 @@ beforeEach(() => {
   sql.exec(readFileSync("migrations/0002_direct_conversations.sql", "utf8"));
   sql.exec(readFileSync("migrations/0003_profile_photos.sql", "utf8"));
   sql.exec(readFileSync("migrations/0004_region_connections.sql", "utf8"));
+  sql.exec(readFileSync("migrations/0005_admin_operations.sql", "utf8"));
   sql.exec(
     "INSERT INTO users(id,google_sub,email,name) VALUES('u','g','user@example.test','テスト'); INSERT INTO talks(id,title,category,starts_at,image,host,description) VALUES('t','会話','喫茶店','2099-01-01T12:00:00Z','/icon.svg','運営','テスト'); INSERT INTO bookings(id,talk_id,user_id,status,amount,stripe_session_id,expires_at) VALUES('b','t','u','pending',1000,'cs_local',unixepoch()+1800)",
   );
@@ -134,6 +136,31 @@ describe("WorkerでのStripe通知の適用", () => {
     expect(
       sql.prepare("SELECT status FROM bookings WHERE id='b'").get()?.status,
     ).toBe("refund_pending");
+  });
+  it("中止されたトークの決済通知は有効期限内でも返金待ちにする", async () => {
+    sql.exec("UPDATE talks SET cancelled_at=CURRENT_TIMESTAMP,published=0");
+    expect((await webhook(session())).status).toBe(200);
+    expect(
+      sql.prepare("SELECT status FROM bookings WHERE id='b'").get()?.status,
+    ).toBe("refund_pending");
+    expect(
+      sql.prepare("SELECT subject FROM email_outbox").get()?.subject,
+    ).toContain("返金");
+  });
+  it("管理サイトの本番は未認証で実データを返さず、ログインも保留中", async () => {
+    const get = (path: string) =>
+      adminWorker.fetch(
+        new Request("https://admin.machi.example" + path),
+        { ...env(), APP_ORIGIN: "https://admin.machi.example" } as any,
+        {} as any,
+      );
+    expect(await (await get("/api/admin/session")).json()).toEqual({
+      authenticated: false,
+      loginDeferred: true,
+    });
+    expect((await get("/api/admin")).status).toBe(401);
+    expect((await get("/api/auth/google")).status).toBe(503);
+    expect((await get("/api/bootstrap")).status).toBe(404);
   });
   it("署名なしの通知でデータを変更しない", async () => {
     const r = await worker.fetch(
