@@ -3,7 +3,7 @@
   color: #293b32;
   background: #f6f8f5;
   font-synthesis: none;
-  font-size: 14px;
+  font-size: 16px;
   --green: #2c5b49;
   --ink: #293b32;
   --muted: #5d6c55;
@@ -80,7 +80,7 @@ h3 {
   line-height: 1.6;
 }
 small {
-  font-size: 11px;
+  font-size: 12px;
 }
 svg {
   flex-shrink: 0;
@@ -218,7 +218,7 @@ select:focus-visible,
 .sidebar-region small {
   display: block;
   color: var(--muted);
-  font-size: 10px;
+  font-size: 12px;
   margin-top: 4px;
 }
 .sidebar-region > svg {
@@ -260,7 +260,7 @@ select:focus-visible,
   margin-top: auto;
 }
 .invite-tag {
-  font-size: 10px;
+  font-size: 12px;
   color: #5d6c55;
   display: flex;
   gap: 6px;
@@ -280,7 +280,7 @@ select:focus-visible,
   gap: 9px;
   background: none;
   align-items: center;
-  font-size: 11px;
+  font-size: 12px;
   color: #5d6c55;
   padding: 14px;
   width: 100%;
@@ -295,12 +295,12 @@ select:focus-visible,
   border-top: 1px solid var(--line);
   padding: 19px 7px 1px;
   margin-top: 12px;
-  font-size: 11px;
+  font-size: 12px;
 }
 .sidebar-user small {
   display: block;
   color: #5d6c55;
-  font-size: 9px;
+  font-size: 12px;
   margin-top: 4px;
 }
 .sidebar-user > svg {
@@ -325,7 +325,7 @@ select:focus-visible,
   height: 29px;
   width: 29px;
   min-width: 29px;
-  font-size: 10px;
+  font-size: 12px;
   border-width: 2px;
 }
 .workspace {
@@ -345,7 +345,7 @@ select:focus-visible,
   display: flex;
   gap: 12px;
   align-items: center;
-  font-size: 10px;
+  font-size: 12px;
   letter-spacing: 0.2px;
   color: #5d6c55;
 }
@@ -361,7 +361,7 @@ select:focus-visible,
   display: flex;
   gap: 6px;
   align-items: center;
-  font-size: 10px;
+  font-size: 12px;
   color: #5d6c55;
 }
 .icon-button {
@@ -392,7 +392,7 @@ select:focus-visible,
 }
 .preview-label {
   padding: 9px 42px 0;
-  font-size: 9px;
+  font-size: 12px;
   color: #5d6c55;
   letter-spacing: 0.3px;
   display: flex;
@@ -418,7 +418,7 @@ main {
   gap: 15px;
 }
 .eyebrow {
-  font-size: 9px;
+  font-size: 12px;
   letter-spacing: 1.8px;
   color: #5d6c55;
   font-weight: 600;
@@ -475,14 +475,14 @@ main {
 .button.small-button {
   min-height: 36px;
   padding: 8px 13px;
-  font-size: 10px;
+  font-size: 12px;
   gap: 7px;
   border-radius: 9px;
   background: #ffffff80;
 }
 .button.text-button {
   background: transparent;
-  font-size: 11px;
+  font-size: 12px;
   color: #5d6c55;
 }
 .region-hero {
@@ -524,7 +524,7 @@ main {
   background: #ffffffeb;
   color: #4b5c48;
   padding: 6px 9px;
-  font-size: 9px;
+  font-size: 12px;
   backdrop-filter: blur(10px);
 }
 .hero-chip.transparent {
@@ -542,7 +542,7 @@ main {
   align-items: flex-end;
 }
 .hero-kicker {
-  font-size: 10px;
+  font-size: 12px;
   letter-spacing: 3.7px;
   opacity: 0.85;
   margin-bottom: 6px;
@@ -563,7 +563,7 @@ main {
   gap: 12px;
   align-items: center;
   margin-top: 12px;
-  font-size: 10px;
+  font-size: 12px;
   color: #ffffffe0;
 }
 .people-stack {
@@ -575,7 +575,7 @@ main {
   height: 26px;
   width: 26px;
   min-width: 26px;
-  font-size: 8px;
+  font-size: 12px;
   border-color: #f5f6ef;
 }
 .people-stack .avatar:first-child {
@@ -602,7 +602,7 @@ main {
   position: absolute;
   right: 26px;
   top: 26px;
-  font-size: 8px;
+  font-size: 12px;
   letter-spacing: 1.8px;
   color: #fff9;
 }
@@ -634,11 +634,11 @@ main {
   display: flex;
   align-items: center;
   gap: 5px;
-  font-size: 10px;
+  font-size: 12px;
   color: #5d6c55;
 }
 .count {
-  font-size: 10px;
+  font-size: 12px;
   font-weight: 400;
   color: #5d6c55;
   background: #edf1e7;
@@ -677,7 +677,7 @@ main {
   display: flex;
   align-items: center;
   gap: 5px;
-  font-size: 9px;
+  font-size: 12px;
   color: #40533e;
   background: #fffffff0;
   backdrop-filter: blur(12px);
@@ -704,7 +704,7 @@ main {
   display: flex;
   align-items: center;
   gap: 6px;
-  font-size: 10px;
+  font-size: 12px;
   color: #5d6c55;
 }
 .talk-date > span {
@@ -724,7 +724,7 @@ main {
   background: #f0f3eb;
   color: #5d6c55;
   padding: 3px 7px;
-  font-size: 9px;
+  font-size: 12px;
   border-radius: 4px;
 }
 .talk-bottom {
@@ -735,7 +735,7 @@ main {
   gap: 10px;
 }
 .talk-bottom .muted {
-  font-size: 10px;
+  font-size: 12px;
 }
 .talk-bottom strong {
   font-size: 17px;
@@ -745,7 +745,7 @@ main {
   gap: 8px;
 }
 .talk-bottom small {
-  font-size: 9px;
+  font-size: 12px;
   font-weight: 400;
   color: #5d6c55;
   border: 1px solid #dfe8d6;
@@ -815,7 +815,7 @@ main {
   color: #5d6c55;
 }
 .trip-card-top > span {
-  font-size: 9px;
+  font-size: 12px;
   letter-spacing: 1.6px;
 }
 .trip-city {
@@ -827,7 +827,7 @@ main {
   gap: 9px;
 }
 .trip-city small {
-  font-size: 9px;
+  font-size: 12px;
   color: #5d6c55;
 }
 .trip-date {
@@ -849,7 +849,7 @@ main {
   display: flex;
   gap: 6px;
   align-items: center;
-  font-size: 10px;
+  font-size: 12px;
   color: #5d6c55;
 }
 .trip-status > button {
@@ -885,7 +885,7 @@ main {
   background: #a1b48a;
 }
 .trip-card > .button {
-  font-size: 10px;
+  font-size: 12px;
   min-height: 36px;
   background: #fff8;
   gap: 5px;
@@ -912,11 +912,11 @@ main {
   border-radius: 8px;
 }
 .community-info h3 {
-  font-size: 10px;
+  font-size: 12px;
   font-weight: 500;
 }
 .community-info p {
-  font-size: 10px;
+  font-size: 12px;
   color: #5d6c55;
   line-height: 2;
   margin: 14px 0;
@@ -929,7 +929,7 @@ main {
   gap: 10px;
 }
 .community-info > div:last-child > span {
-  font-size: 9px;
+  font-size: 12px;
   display: flex;
   gap: 7px;
   align-items: center;
@@ -981,7 +981,7 @@ main {
   flex: 1;
 }
 .room-preview h3 {
-  font-size: 11px;
+  font-size: 12px;
   line-height: 1.5;
 }
 .room-preview p {
@@ -989,7 +989,7 @@ main {
   text-overflow: ellipsis;
   white-space: nowrap;
   color: #5d6c55;
-  font-size: 10px;
+  font-size: 12px;
   margin-top: 5px;
 }
 .room-preview small {
@@ -997,7 +997,7 @@ main {
   gap: 6px;
   align-items: center;
   margin-top: 8px;
-  font-size: 8px;
+  font-size: 12px;
   color: #5d6c55;
 }
 .unread-badge {
@@ -1009,7 +1009,7 @@ main {
   background: #839b6c;
   color: white;
   border-radius: 6px;
-  font-size: 9px;
+  font-size: 12px;
 }
 .room-preview > svg {
   color: #5d6c55;
@@ -1034,7 +1034,7 @@ main {
   color: #5d6c55;
   padding: 7px 13px;
   border-radius: 7px;
-  font-size: 10px;
+  font-size: 12px;
   min-height: 32px;
   transition: all 0.2s;
 }
@@ -1048,7 +1048,7 @@ main {
 }
 .filter-hint {
   margin-left: auto;
-  font-size: 9px;
+  font-size: 12px;
   color: #5d6c55;
 }
 .notes-grid {
@@ -1083,7 +1083,7 @@ main {
   left: 12px;
   background: #ffffffeb;
   border-radius: 5px;
-  font-size: 8px;
+  font-size: 12px;
   padding: 4px 8px;
   color: #5d6c55;
 }
@@ -1103,17 +1103,17 @@ main {
   height: 22px;
   width: 22px;
   min-width: 22px;
-  font-size: 8px;
+  font-size: 12px;
   background: #e8e3d6 !important;
 }
 .note-author > span {
-  font-size: 9px;
+  font-size: 12px;
   display: flex;
   align-items: center;
   gap: 7px;
 }
 .note-author small {
-  font-size: 7px;
+  font-size: 12px;
   border: 1px solid #e1e7d8;
   border-radius: 3px;
   color: #5d6c55;
@@ -1130,7 +1130,7 @@ main {
   display: flex;
   gap: 5px;
   align-items: center;
-  font-size: 8px;
+  font-size: 12px;
   color: #5d6c55;
 }
 .page-footer {
@@ -1149,14 +1149,14 @@ main {
   letter-spacing: -0.8px;
 }
 .page-footer > small {
-  font-size: 8px;
+  font-size: 12px;
 }
 .footer-status {
   margin-left: auto;
   display: flex;
   align-items: center;
   gap: 5px;
-  font-size: 8px;
+  font-size: 12px;
 }
 .bottom-nav,
 .mobile-brand {
@@ -1230,7 +1230,7 @@ main {
   font-size: 12px;
 }
 .notification-item p {
-  font-size: 11px;
+  font-size: 12px;
   color: var(--muted);
   margin-top: 5px;
 }
@@ -1279,7 +1279,7 @@ main {
   padding: 6px 10px;
   border-radius: 6px;
   color: #5d6c55;
-  font-size: 10px;
+  font-size: 12px;
   white-space: nowrap;
 }
 .talks-grid {
@@ -1310,7 +1310,7 @@ main {
   color: #5d6c55;
 }
 .info-strip p {
-  font-size: 11px;
+  font-size: 12px;
   line-height: 1.9;
 }
 .info-strip strong {
@@ -1367,7 +1367,7 @@ main {
   font-size: 12px;
 }
 .consultation-row p {
-  font-size: 10px;
+  font-size: 12px;
   color: var(--muted);
   margin-top: 7px;
 }
@@ -1378,7 +1378,7 @@ main {
   display: flex;
   align-items: center;
   gap: 7px;
-  font-size: 11px;
+  font-size: 12px;
   color: #5d6c55;
   margin-bottom: 22px;
 }
@@ -1413,7 +1413,7 @@ main {
   gap: 15px;
   flex-wrap: wrap;
   color: #5d6c55;
-  font-size: 11px;
+  font-size: 12px;
 }
 .detail-chips > span {
   display: flex;
@@ -1450,7 +1450,7 @@ main {
 }
 .participant-list small {
   display: block;
-  font-size: 9px;
+  font-size: 12px;
   color: #5d6c55;
 }
 .booking-panel {
@@ -1469,14 +1469,14 @@ main {
   margin: 12px 0 5px;
 }
 .price > span {
-  font-size: 10px;
+  font-size: 12px;
   background: #edf2e6;
   padding: 4px 8px;
   border-radius: 5px;
   color: #5d6c55;
 }
 .booking-panel > p {
-  font-size: 10px;
+  font-size: 12px;
   color: #5d6c55;
 }
 .capacity-bar {
@@ -1496,17 +1496,17 @@ main {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  font-size: 10px;
+  font-size: 12px;
   color: #5d6c55;
   margin: 9px 0 25px;
 }
 .capacity-label > strong {
-  font-size: 10px;
+  font-size: 12px;
   color: #5d6c55;
   font-weight: 500;
 }
 .booking-security {
-  font-size: 9px;
+  font-size: 12px;
   color: #5d6c55;
   display: flex;
   justify-content: center;
@@ -1535,7 +1535,7 @@ main {
   font-size: 14px;
 }
 .confirmation-summary p {
-  font-size: 11px;
+  font-size: 12px;
   margin-top: 10px;
   color: #5d6c55;
 }
@@ -1548,7 +1548,7 @@ main {
   display: flex;
   align-items: flex-start;
   gap: 9px;
-  font-size: 11px;
+  font-size: 12px;
   line-height: 1.9;
   margin: 17px 0;
   color: #5d6c55;
@@ -1608,7 +1608,7 @@ main {
 }
 .room-card p {
   color: #5d6c55;
-  font-size: 10px;
+  font-size: 12px;
   margin-top: 7px;
 }
 .room-card blockquote {
@@ -1626,7 +1626,7 @@ main {
   align-items: center;
   gap: 7px;
   color: #5d6c55;
-  font-size: 11px;
+  font-size: 12px;
   margin-top: 10px;
 }
 .chat-panel {
@@ -1648,7 +1648,7 @@ main {
   letter-spacing: 0;
 }
 .chat-header p {
-  font-size: 10px;
+  font-size: 12px;
   color: #5d6c55;
   display: flex;
   gap: 6px;
@@ -1667,7 +1667,7 @@ main {
 .chat-date {
   text-align: center;
   color: #5d6c55;
-  font-size: 9px;
+  font-size: 12px;
   margin: 4px 0 28px;
 }
 .message {
@@ -1683,7 +1683,7 @@ main {
   max-width: 80%;
 }
 .message-author {
-  font-size: 10px;
+  font-size: 12px;
   color: #5d6c55;
   display: flex;
   gap: 10px;
@@ -1691,7 +1691,7 @@ main {
   margin-bottom: 7px;
 }
 .message-author time {
-  font-size: 8px;
+  font-size: 12px;
   color: #5d6c55;
 }
 .message.own .message-author {
@@ -1725,7 +1725,7 @@ main {
   align-items: center;
   gap: 3px;
   background: none;
-  font-size: 9px;
+  font-size: 12px;
   color: #5d6c55;
   padding: 4px 1px;
 }
@@ -1733,7 +1733,7 @@ main {
   justify-content: flex-end;
 }
 .reply-context {
-  font-size: 10px;
+  font-size: 12px;
   background: #e9eee4;
   padding: 9px 13px;
   border-left: 2px solid #a5b792;
@@ -1784,7 +1784,7 @@ main {
 .chat-composer > small {
   display: block;
   text-align: center;
-  font-size: 8px;
+  font-size: 12px;
   color: #5d6c55;
   margin-top: 10px;
 }
@@ -1792,7 +1792,7 @@ main {
   display: flex;
   gap: 10px;
   justify-content: space-between;
-  font-size: 10px;
+  font-size: 12px;
   color: #5d6c55;
   padding-bottom: 10px;
 }
@@ -1872,7 +1872,7 @@ main {
   gap: 4px;
   align-items: center;
   color: #5d6c55;
-  font-size: 9px;
+  font-size: 12px;
 }
 .provider-card > p {
   font-size: 12px;
@@ -1881,7 +1881,7 @@ main {
   margin: 15px 0;
 }
 .provider-price {
-  font-size: 11px;
+  font-size: 12px;
   color: #5d6c55;
   margin: 18px 0;
 }
@@ -1947,7 +1947,7 @@ main {
   color: #5d6c55;
 }
 .share-field > p {
-  font-size: 11px;
+  font-size: 12px;
   margin: 16px 0 7px;
 }
 .login-card {
@@ -1962,7 +1962,7 @@ main {
   font-size: 15px;
 }
 .login-card p {
-  font-size: 10px;
+  font-size: 12px;
   color: #5d6c55;
   margin-top: 6px;
 }
@@ -2006,7 +2006,7 @@ main {
   border-radius: 13px;
 }
 .metric > span {
-  font-size: 11px;
+  font-size: 12px;
   color: #5d6c55;
 }
 .metric > strong {
@@ -2039,7 +2039,7 @@ main {
   font-size: 12px;
 }
 .admin-row p {
-  font-size: 11px;
+  font-size: 12px;
   color: #5d6c55;
   margin-top: 8px;
   overflow-wrap: anywhere;
@@ -2051,11 +2051,11 @@ main {
   max-width: 600px;
 }
 .admin-panel form > .muted {
-  font-size: 11px;
+  font-size: 12px;
   margin: 15px 0 22px;
 }
 .ai-result {
-  font-size: 11px;
+  font-size: 12px;
   white-space: pre-wrap;
   overflow-wrap: anywhere;
   color: #5d6c55;
@@ -2176,7 +2176,7 @@ main {
     font-size: 14px;
   }
   .talk-card.compact .talk-date {
-    font-size: 9px;
+    font-size: 12px;
     gap: 4px;
     flex-wrap: wrap;
   }
@@ -2196,7 +2196,7 @@ main {
     gap: 6px;
   }
   .community-info h3 {
-    font-size: 9px;
+    font-size: 12px;
   }
   .talks-grid {
     grid-template-columns: repeat(2, minmax(0, 1fr));
@@ -2221,7 +2221,7 @@ main {
     gap: 4px;
   }
   .note-author small {
-    font-size: 6px;
+    font-size: 12px;
   }
   .notes-grid {
     gap: 13px;
@@ -2314,17 +2314,17 @@ main {
     gap: 14px;
   }
   .community-tag {
-    font-size: 9px;
+    font-size: 12px;
   }
   .topbar-right > a {
     display: none;
   }
   .preview-label {
     padding: 10px 21px 0;
-    font-size: 8px;
+    font-size: 12px;
   }
   .preview-label > span {
-    font-size: 8px;
+    font-size: 12px;
     padding: 1px 4px;
   }
   main {
@@ -2334,7 +2334,7 @@ main {
     margin-bottom: 21px;
   }
   .eyebrow {
-    font-size: 8px;
+    font-size: 12px;
     letter-spacing: 1.5px;
   }
   .page-heading h1 {
@@ -2342,13 +2342,13 @@ main {
     letter-spacing: -0.5px;
   }
   .page-heading > .pill {
-    font-size: 9px;
+    font-size: 12px;
     padding: 6px;
   }
   .page-heading > .small-button {
     padding: 7px 9px;
     min-height: 33px;
-    font-size: 9px;
+    font-size: 12px;
     gap: 5px;
   }
   .region-hero {
@@ -2364,7 +2364,7 @@ main {
     gap: 6px;
   }
   .hero-chip {
-    font-size: 8px;
+    font-size: 12px;
     padding: 5px 7px;
   }
   .hero-credit {
@@ -2376,7 +2376,7 @@ main {
     bottom: 23px;
   }
   .hero-kicker {
-    font-size: 8px;
+    font-size: 12px;
     letter-spacing: 3px;
   }
   .hero-bottom h2 {
@@ -2385,20 +2385,20 @@ main {
   }
   .hero-bottom h2 > span {
     display: block;
-    font-size: 11px;
+    font-size: 12px;
     letter-spacing: 1.3px;
     margin: 4px 0 0;
   }
   .hero-members {
     margin-top: 15px;
-    font-size: 8px;
+    font-size: 12px;
     gap: 9px;
   }
   .hero-members .avatar {
     width: 22px;
     height: 22px;
     min-width: 22px;
-    font-size: 7px;
+    font-size: 12px;
   }
   .hero-action {
     width: 40px;
@@ -2441,7 +2441,7 @@ main {
     grid-column: 1/-1;
   }
   .trip-card-top > span {
-    font-size: 8px;
+    font-size: 12px;
   }
   .trip-city {
     font-size: 20px;
@@ -2449,7 +2449,7 @@ main {
     grid-column: 1;
   }
   .trip-date {
-    font-size: 10px;
+    font-size: 12px;
     margin-top: 5px;
     grid-column: 1;
     grid-row: 3;
@@ -2463,7 +2463,7 @@ main {
     align-self: center;
   }
   .trip-status > span {
-    font-size: 9px;
+    font-size: 12px;
   }
   .trip-status > button {
     width: 23px;
@@ -2477,7 +2477,7 @@ main {
     grid-column: 1/-1;
     margin-top: 18px;
     min-height: 33px;
-    font-size: 10px;
+    font-size: 12px;
   }
   .community-info {
     display: none;
@@ -2489,7 +2489,7 @@ main {
     font-size: 14px;
   }
   .section-title > a {
-    font-size: 9px;
+    font-size: 12px;
   }
   .talk-card.compact {
     min-height: 189px;
@@ -2508,7 +2508,7 @@ main {
     line-height: 1.9;
   }
   .talk-card.compact .talk-date {
-    font-size: 8px;
+    font-size: 12px;
     gap: 4px;
     flex-wrap: wrap;
   }
@@ -2523,7 +2523,7 @@ main {
     height: 21px;
     width: 21px;
     min-width: 21px;
-    font-size: 7px;
+    font-size: 12px;
     margin-left: -7px;
   }
   .talk-card.compact .talk-bottom .people-stack .avatar:first-child {
@@ -2533,18 +2533,18 @@ main {
     gap: 7px;
   }
   .talk-card.compact .talk-bottom .muted {
-    font-size: 8px;
+    font-size: 12px;
     white-space: nowrap;
   }
   .talk-card.compact .talk-bottom strong {
     font-size: 13px;
   }
   .talk-bottom small {
-    font-size: 7px;
+    font-size: 12px;
     padding: 2px 4px;
   }
   .tags > span {
-    font-size: 7px;
+    font-size: 12px;
     padding: 3px 5px;
   }
   .tags {
@@ -2553,7 +2553,7 @@ main {
   .photo-badge {
     top: 11px;
     left: 10px;
-    font-size: 7px;
+    font-size: 12px;
     gap: 4px;
     padding: 4px 6px;
   }
@@ -2577,14 +2577,14 @@ main {
     border-radius: 10px;
   }
   .room-preview h3 {
-    font-size: 11px;
+    font-size: 12px;
   }
   .room-preview p {
-    font-size: 9px;
+    font-size: 12px;
     margin-top: 5px;
   }
   .room-preview small {
-    font-size: 8px;
+    font-size: 12px;
   }
   .room-preview-list {
     gap: 9px;
@@ -2606,17 +2606,17 @@ main {
     padding: 13px 12px;
   }
   .note-content h3 {
-    font-size: 10px;
+    font-size: 12px;
     margin-bottom: 12px;
     line-height: 1.8;
     min-height: 36px;
   }
   .note-author > span {
-    font-size: 8px;
+    font-size: 12px;
     display: block;
   }
   .note-author small {
-    font-size: 6px;
+    font-size: 12px;
     display: block;
     margin-top: 3px;
     padding: 1px 3px;
@@ -2631,7 +2631,7 @@ main {
     width: 13px;
   }
   .verified {
-    font-size: 6px;
+    font-size: 12px;
     margin-top: 10px;
     padding-top: 9px;
     gap: 3px;
@@ -2642,11 +2642,11 @@ main {
   .note-photo > span {
     left: 9px;
     top: 9px;
-    font-size: 7px;
+    font-size: 12px;
     padding: 4px 6px;
   }
   .chip {
-    font-size: 9px;
+    font-size: 12px;
     min-height: 32px;
     padding: 7px 11px;
     border-radius: 7px;
@@ -2688,7 +2688,7 @@ main {
     width: 20%;
     position: relative;
     border-radius: 10px;
-    font-size: 8px;
+    font-size: 12px;
     transition:
       color 0.2s,
       background 0.2s;
@@ -2709,7 +2709,7 @@ main {
   .toast {
     bottom: 85px;
     left: 50%;
-    font-size: 10px;
+    font-size: 12px;
     padding: 14px 17px;
     width: max-content;
     max-width: 90vw;
@@ -2732,10 +2732,10 @@ main {
     min-height: 46px;
   }
   .notification-item strong {
-    font-size: 11px;
+    font-size: 12px;
   }
   .notification-item p {
-    font-size: 10px;
+    font-size: 12px;
   }
   .talks-grid {
     grid-template-columns: 1fr;
@@ -2763,7 +2763,7 @@ main {
     line-height: 1.7;
   }
   .talks-grid .talk-date {
-    font-size: 9px;
+    font-size: 12px;
     flex-wrap: wrap;
   }
   .talks-grid .talk-bottom {
@@ -2776,13 +2776,13 @@ main {
     height: 22px;
     width: 22px;
     min-width: 22px;
-    font-size: 7px;
+    font-size: 12px;
   }
   .talks-grid .talk-bottom .inline {
     gap: 6px;
   }
   .talks-grid .talk-bottom .muted {
-    font-size: 8px;
+    font-size: 12px;
   }
   .info-strip {
     padding: 17px;
@@ -2790,7 +2790,7 @@ main {
     margin-top: 22px;
   }
   .info-strip p {
-    font-size: 10px;
+    font-size: 12px;
   }
   .booking-section {
     margin-top: 28px;
@@ -2802,13 +2802,13 @@ main {
     flex-wrap: wrap;
   }
   .booking-row strong {
-    font-size: 11px;
+    font-size: 12px;
   }
   .booking-row small {
-    font-size: 9px;
+    font-size: 12px;
   }
   .booking-row .pill {
-    font-size: 8px;
+    font-size: 12px;
   }
   .detail-photo {
     height: 220px;
@@ -2818,7 +2818,7 @@ main {
   .detail-photo .photo-badge {
     top: 15px;
     left: 15px;
-    font-size: 9px;
+    font-size: 12px;
   }
   .detail-grid {
     grid-template-columns: 1fr;
@@ -2831,7 +2831,7 @@ main {
   }
   .detail-chips {
     gap: 9px;
-    font-size: 10px;
+    font-size: 12px;
   }
   .detail-chips > span:first-child {
     width: 100%;
@@ -2853,11 +2853,11 @@ main {
     font-size: 29px;
   }
   .booking-panel > .price > span {
-    font-size: 8px;
+    font-size: 12px;
   }
   .booking-panel > p {
     grid-column: 1;
-    font-size: 8px;
+    font-size: 12px;
   }
   .capacity-bar {
     grid-column: 2;
@@ -2870,7 +2870,7 @@ main {
     grid-row: 2;
     align-self: center;
     margin: 0;
-    font-size: 9px;
+    font-size: 12px;
   }
   .booking-panel > .button,
   .booking-panel > .booking-confirmed {
@@ -2892,7 +2892,7 @@ main {
     gap: 16px;
   }
   .participant-list > div {
-    font-size: 11px;
+    font-size: 12px;
   }
   .participant-list .avatar {
     height: 37px;
@@ -2901,7 +2901,7 @@ main {
     font-size: 13px;
   }
   .participant-list small {
-    font-size: 8px;
+    font-size: 12px;
   }
   .rooms-grid {
     grid-template-columns: 1fr;
@@ -2917,7 +2917,7 @@ main {
     font-size: 15px;
   }
   .room-card blockquote {
-    font-size: 11px;
+    font-size: 12px;
     min-height: 0;
   }
   .chat-panel {
@@ -2936,7 +2936,7 @@ main {
     width: 37px;
   }
   .chat-header p {
-    font-size: 8px;
+    font-size: 12px;
   }
   .chat-messages {
     height: calc(100dvh - 380px);
@@ -2953,23 +2953,23 @@ main {
     height: 25px;
     width: 25px;
     min-width: 25px;
-    font-size: 8px;
+    font-size: 12px;
   }
   .message-bubble {
-    font-size: 11px;
+    font-size: 12px;
     padding: 11px 13px;
   }
   .message-author {
-    font-size: 9px;
+    font-size: 12px;
   }
   .chat-composer {
     padding: 12px;
   }
   .compose-row textarea {
-    font-size: 11px;
+    font-size: 12px;
   }
   .chat-composer > small {
-    font-size: 7px;
+    font-size: 12px;
   }
   .note-detail-photo {
     height: 220px;
@@ -2981,7 +2981,7 @@ main {
     font-size: 22px;
   }
   .note-detail-author .pill {
-    font-size: 8px;
+    font-size: 12px;
   }
   .note-body {
     font-size: 12px;
@@ -3002,10 +3002,10 @@ main {
     font-size: 15px;
   }
   .provider-card > p {
-    font-size: 11px;
+    font-size: 12px;
   }
   .provider-price {
-    font-size: 10px;
+    font-size: 12px;
   }
   .consult-form,
   .profile-form {
@@ -3014,7 +3014,7 @@ main {
     border-radius: 15px;
   }
   .field {
-    font-size: 11px;
+    font-size: 12px;
     margin-bottom: 20px;
     gap: 8px;
   }
@@ -3029,20 +3029,20 @@ main {
     gap: 13px;
   }
   .checkbox-field {
-    font-size: 10px;
+    font-size: 12px;
     line-height: 2;
   }
   .share-field {
     padding: 14px;
   }
   .share-field legend {
-    font-size: 10px;
+    font-size: 12px;
   }
   .share-field > small {
-    font-size: 9px;
+    font-size: 12px;
   }
   .share-field > p {
-    font-size: 10px;
+    font-size: 12px;
   }
   .login-card {
     padding: 20px;
@@ -3055,14 +3055,14 @@ main {
     font-size: 14px;
   }
   .login-card p {
-    font-size: 9px;
+    font-size: 12px;
   }
   .login-card > .button {
     width: 100%;
     margin: 0;
   }
   .login-card > small {
-    font-size: 9px;
+    font-size: 12px;
   }
   .profile-identity > .avatar {
     height: 51px;
@@ -3075,7 +3075,7 @@ main {
     margin-top: 20px;
   }
   .account-actions > .button {
-    font-size: 10px;
+    font-size: 12px;
     min-height: 40px;
     padding: 10px 13px;
   }
@@ -3087,7 +3087,7 @@ main {
     padding: 18px;
   }
   .metric > span {
-    font-size: 10px;
+    font-size: 12px;
   }
   .metric > strong {
     font-size: 24px;
@@ -3101,10 +3101,10 @@ main {
     padding: 17px 0;
   }
   .admin-row p {
-    font-size: 10px;
+    font-size: 12px;
   }
   .admin-row .button {
-    font-size: 10px;
+    font-size: 12px;
     min-height: 35px;
     padding: 8px 12px;
   }
@@ -3112,7 +3112,7 @@ main {
     font-size: 14px;
   }
   .admin-panel > .muted {
-    font-size: 11px;
+    font-size: 12px;
   }
   .sk-hero {
     height: 262px;
@@ -3134,10 +3134,10 @@ main {
     padding: 17px;
   }
   .search-panel label {
-    font-size: 11px;
+    font-size: 12px;
   }
   .search-panel small {
-    font-size: 9px;
+    font-size: 12px;
   }
 }
 @media (max-width: 360px) {
@@ -3146,7 +3146,7 @@ main {
     padding-right: 15px;
   }
   .hero-members {
-    font-size: 7px;
+    font-size: 12px;
   }
   .talk-card.compact .talk-content {
     padding: 15px 12px;
@@ -3161,13 +3161,13 @@ main {
     height: 18px;
     width: 18px;
     min-width: 18px;
-    font-size: 6px;
+    font-size: 12px;
   }
   .talk-card.compact .talk-bottom strong {
     font-size: 12px;
   }
   .trip-status > span {
-    font-size: 8px;
+    font-size: 12px;
   }
   .trip-status > button {
     width: 18px;
@@ -3180,7 +3180,7 @@ main {
     gap: 8px;
   }
   .community-tag {
-    font-size: 8px;
+    font-size: 12px;
   }
 }
 @media (prefers-reduced-motion: reduce) {
@@ -3245,7 +3245,7 @@ main {
   align-items: center;
   gap: 3px;
   color: #596654;
-  font-size: 11px;
+  font-size: 12px;
 }
 .person-identity > svg {
   color: #69765e;
@@ -3265,7 +3265,7 @@ main {
   align-items: center;
   gap: 6px;
   color: #596654;
-  font-size: 11px;
+  font-size: 12px;
   margin-top: auto;
 }
 .person-card .button {
@@ -3281,7 +3281,7 @@ main {
   flex-wrap: wrap;
 }
 .person-interests > span {
-  font-size: 10px;
+  font-size: 12px;
   padding: 5px 9px;
   border-radius: 8px;
   color: #52604d;
@@ -3347,7 +3347,7 @@ main {
   align-items: center;
   justify-content: center;
   color: #596654;
-  font-size: 11px;
+  font-size: 12px;
   margin-top: 16px;
 }
 .conversation-tabs {
@@ -3381,7 +3381,7 @@ main {
   box-shadow: 0 3px 10px #2433210b;
 }
 .conversation-tabs > button > span {
-  font-size: 10px;
+  font-size: 12px;
   background: #e8eddf;
   padding: 3px 6px;
   border-radius: 6px;
@@ -3428,7 +3428,7 @@ main {
   margin: 0;
 }
 .conversation-copy time {
-  font-size: 10px;
+  font-size: 12px;
   color: #596654;
 }
 .conversation-copy p {
@@ -3440,7 +3440,7 @@ main {
   text-overflow: ellipsis;
 }
 .conversation-copy small {
-  font-size: 10px;
+  font-size: 12px;
   color: #596654;
 }
 .room-cover .avatar {
@@ -3502,7 +3502,7 @@ main {
 .conversation-opt-in small {
   display: block;
   color: #52604d;
-  font-size: 11px;
+  font-size: 12px;
   line-height: 1.9;
   margin-top: 9px;
 }
@@ -3552,7 +3552,7 @@ main {
     flex-wrap: wrap;
   }
   .member-profile > small {
-    font-size: 10px;
+    font-size: 12px;
   }
   .conversation-tabs {
     width: 100%;
@@ -3563,7 +3563,7 @@ main {
     justify-content: center;
     gap: 5px;
     padding: 9px 8px;
-    font-size: 11px;
+    font-size: 12px;
   }
   .conversation-row {
     padding: 17px;
@@ -3579,7 +3579,7 @@ main {
     font-size: 15px;
   }
   .conversation-copy p {
-    font-size: 11px;
+    font-size: 12px;
   }
   .conversation-opt-in {
     padding: 16px;
@@ -3605,7 +3605,7 @@ main {
 }
 .person-regions > span,
 .my-region-filters > span {
-  font-size: 10px;
+  font-size: 12px;
   color: #596654;
   display: block;
   margin-bottom: 8px;
@@ -3624,7 +3624,7 @@ main {
   border-radius: 9px;
   background: #f6f8f1;
   color: #42563c;
-  font-size: 11px;
+  font-size: 12px;
   transition:
     background 0.2s,
     transform 0.2s;
@@ -3657,7 +3657,7 @@ main {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  font-size: 11px;
+  font-size: 12px;
   color: #596654;
 }
 .people-result-count button {
@@ -3665,7 +3665,7 @@ main {
   align-items: center;
   gap: 6px;
   background: transparent;
-  font-size: 11px;
+  font-size: 12px;
   min-height: 32px;
 }
 .profile-photo-controls {
@@ -3678,7 +3678,7 @@ main {
 .profile-photo-controls > small {
   width: 100%;
   color: #596654;
-  font-size: 11px;
+  font-size: 12px;
   line-height: 1.8;
 }
 .photo-input {
@@ -3700,7 +3700,7 @@ main {
 }
 .profile-form .field > small {
   color: #596654;
-  font-size: 11px;
+  font-size: 12px;
   line-height: 1.8;
 }
 .profile-identity > .avatar {
@@ -3721,7 +3721,7 @@ main {
     margin-top: 0;
   }
   .profile-photo-controls > .button {
-    font-size: 11px;
+    font-size: 12px;
   }
   .discovery-filters {
     grid-template-columns: 1fr;
@@ -3866,7 +3866,7 @@ main {
   font-weight: 600;
 }
 .residence-link small {
-  font-size: 11px;
+  font-size: 12px;
   color: #606d62;
 }
 .person-card > .residence-links {

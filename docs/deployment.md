@@ -2,14 +2,14 @@
 
 本番の会員データを扱うため、GitHub・Cloudflare・Google・Stripe・メール送信元の接続設定が必要です。秘密情報は `.dev.vars` または `wrangler secret put` に入力し、Git・チャット・画面のURLへ含めません。
 
-## 現在の準備状況（2026年10月22日）
+## 現在の準備状況（2026年10月23日）
 
 - GitHubの `LilDayne30` と、確認済みメール `danaoki30@gmail.com` の一致をブラウザで確認済みです。
 - publicリポジトリ [LilDayne30/machi-community](https://github.com/LilDayne30/machi-community) は作成済みです。ソースの送信はまだ完了していません。
 - Cloudflareの `Danaoki30@gmail.com's Account` に `machi-community` D1をアジア配置で作成しました。`wrangler.jsonc` はこのアカウントとDBへ設定済みです。
 - 本番D1の初期スキーマを適用し、18テーブル・7インデックス・会員0件を実SQLで確認しました。`d1_migrations` に `0001_initial.sql` の適用済み記録もあります。DBを再作成しないでください。
 - 1対1会話を追加する `0002_direct_conversations.sql` はローカル・本番へ適用済みです。本番でも追加テーブル・3つのトリガー・移行履歴を読み戻しました。今後の未適用分は `npm run db:remote` で適用します。既存の小部屋や履歴を引き継ぎます。
-- 写真用の `0003_profile_photos.sql` はローカルへ適用済みです。今回のWorkerを本番へデプロイする前に `npm run db:remote` で本番にも適用してください。国籍・街・興味のある地域は既存のprofile JSONで保持します。既存会員は国籍登録後にメッセージを送れるようになります。
+- 写真用の `0003_profile_photos.sql` はローカルへ適用済みです。今回のWorkerを本番へデプロイする前に `npm run db:remote` で本番にも適用してください。居住地域用の `0004_region_connections.sql` もローカルへ適用済み・本番へ未適用です。デプロイ前に0003・0004を両方適用してください。国籍・街・興味のある地域は既存のprofile JSONで保持します。既存会員は国籍登録後にメッセージを送れるようになります。
 - 居住地域用の `0004_region_connections.sql` もローカルへ適用済み、本番へは未適用です。共通の地域カタログと会員・地域の関係テーブルを追加します。既存会員の国籍や自由記述の街から関係を推定して移行しません。既存のプロフィール・会話は保持します。0003・0004を適用してから新しいWorkerをデプロイしてください。
 - 配信先の設定は `https://machi-community.danaoki30.workers.dev` です。これは設定上の公開予定URLで、デプロイ済みという意味ではありません。
 - Google OAuthの設定は、Google Cloudの本人確認・多要素認証などの要件を満たしたアカウントで行ってください。
@@ -65,6 +65,26 @@ npx wrangler secret put GOOGLE_CLIENT_SECRET
 最初に `ADMIN_EMAIL` のGoogleアカウントでログインすると運営者になります。他の新規会員は事前招待が必要です。「運営管理 → 募集・招待」からメールアドレスを登録してください。招待の有効期間は30日です。招待メールは自動送信せず、運営者がアプリURLを本人へ共有します。
 
 認証は認可コード＋PKCE、state、nonce、Googleの公開鍵、issuer、audience、email_verifiedを検証します。セッションはランダム値をHttpOnly / Secure / SameSite=Lax Cookieへ入れ、DBにはそのSHA-256だけを保存します。
+
+### ローカルでGoogleログインを有効にする
+
+現在のローカル版はGoogleのクライアントID・シークレットが未設定です。Google Cloud側の本人確認を完了してから、Webアプリ用のOAuthクライアントを作成します。クライアント作成画面で次を登録してください。
+
+- 承認済みJavaScript生成元：`http://127.0.0.1:5173`
+- 承認済みリダイレクトURI：`http://127.0.0.1:5173/api/auth/callback`
+- テストユーザー：まず運営用のGoogleアカウント。
+
+`localhost` と `127.0.0.1`、ポート、パスは別のURIです。`.dev.vars` の `APP_ORIGIN` と完全に一致させます。詳細は[Google公式の認可コードフロー](https://developers.google.com/identity/protocols/oauth2/web-server)を参照してください。
+
+Googleから取得したWebクライアントのJSONをリポジトリ外へ保存し、次で取り込みます。シークレットをチャットへ貼り付ける必要はありません。
+
+```sh
+npm run auth:google -- /絶対パス/client_secret.json
+```
+
+このコマンドは承認済みコールバックの一致を確認してから、Git対象外の `.dev.vars` にだけ保存します。秘密情報は出力せず、ファイルの権限を所有者のみの読み書きにします。本番Workerのsecretは別途前記の手順で登録します。APIサーバーが設定を読み直した後、`/profile` の「Googleで続ける」でログインします。
+
+取消・期限切れ・未招待・トークン検証失敗はプロフィール画面へ戻して案内します。模擬プロバイダーのテストと、実Googleアカウントを使う疎通確認は別に記録します。実アカウントの成功確認は未完了です。
 
 ## 4. Stripe
 

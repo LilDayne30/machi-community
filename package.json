@@ -14,7 +14,8 @@
     "test": "playwright test",
     "test:unit": "vitest run",
     "test:all": "npm run build && npm run test:unit && npm test",
-    "publish:github": "node scripts/publish-github.mjs"
+    "publish:github": "node scripts/publish-github.mjs",
+    "auth:google": "node scripts/setup-google.mjs"
   },
   "dependencies": {
     "hono": "^4.10.0",

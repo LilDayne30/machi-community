@@ -23,7 +23,13 @@ export function Avatar({
       style={{ background: color }}
     >
       {src && !failed ? (
-        <img src={src} alt="" onError={() => setFailed(true)} />
+        <img
+          src={src}
+          alt=""
+          width={108}
+          height={108}
+          onError={() => setFailed(true)}
+        />
       ) : (
         name.slice(0, 1)
       )}
@@ -46,7 +52,6 @@ export function People({ people }: { people: Person[] }) {
   );
 }
 export function Heading({
-  eyebrow,
   title,
   children,
 }: {
@@ -57,7 +62,6 @@ export function Heading({
   return (
     <div className="page-heading">
       <div>
-        <div className="eyebrow">{eyebrow}</div>
         <h1>{title}</h1>
       </div>
       {children}
@@ -195,7 +199,7 @@ export function TalkCard({
       className={`talk-card glass ${compact ? "compact" : ""}`}
     >
       <div className="talk-photo">
-        <img src={talk.image} alt="" loading="lazy" />
+        <img src={talk.image} alt="" width={640} height={400} loading="lazy" />
         <span className="photo-badge">
           <span className="live-dot" />
           オンライン

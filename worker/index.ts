@@ -1,4 +1,5 @@
 import { Hono } from "hono";
+import { readOAuthTransaction } from "./auth";
 import { getCookie, setCookie, deleteCookie } from "hono/cookie";
 import { HTTPException } from "hono/http-exception";
 import { createRemoteJWKSet, jwtVerify } from "jose";
@@ -429,11 +430,17 @@ app.get("/api/auth/google", async (c) => {
 app.get("/api/auth/callback", async (c) => {
   const saved = getCookie(c, "machi_oauth");
   deleteCookie(c, "machi_oauth", { path: "/" });
-  if (!saved || !c.req.query("code"))
+  const o = readOAuthTransaction(saved);
+  if (!o || o.state !== c.req.query("state"))
+    throw new HTTPException(400, {
+      message: "認証状態を確認できません。ログインをやり直してください",
+    });
+  if (c.req.query("error"))
+    return c.redirect(c.env.APP_ORIGIN + "/profile?login=cancelled", 303);
+  if (!c.req.query("code"))
     throw new HTTPException(400, { message: "認証をやり直してください" });
-  const o = parseJSON(atob(saved), { state: "", nonce: "", verifier: "" });
-  if (!o.state || o.state !== c.req.query("state"))
-    throw new HTTPException(400, { message: "認証状態が一致しません" });
+  if (!c.env.GOOGLE_CLIENT_ID || !c.env.GOOGLE_CLIENT_SECRET)
+    throw new HTTPException(503, { message: "Google認証の接続設定が必要です" });
   const r = await fetch("https://oauth2.googleapis.com/token", {
     method: "POST",
     headers: { "Content-Type": "application/x-www-form-urlencoded" },
@@ -446,7 +453,7 @@ app.get("/api/auth/callback", async (c) => {
       code_verifier: o.verifier,
     }),
   });
-  const token = (await r.json()) as any;
+  const token = (await r.json().catch(() => ({}))) as any;
   if (!r.ok || !token.id_token)
     throw new HTTPException(401, { message: "Google認証に失敗しました" });
   const { payload } = await jwtVerify(token.id_token, googleKeys, {
@@ -1687,6 +1694,13 @@ async function deliverEmails(env: Env) {
   }
 }
 app.onError((e, c) => {
+  // Return people to the app with an actionable message, never a raw provider response.
+  if (c.req.path === "/api/auth/callback") {
+    const status = e instanceof HTTPException ? e.status : 500;
+    const reason =
+      status === 400 ? "expired" : status === 403 ? "not_invited" : "failed";
+    return c.redirect(c.env.APP_ORIGIN + "/profile?login=" + reason, 303);
+  }
   if (e instanceof HTTPException) return c.json({ error: e.message }, e.status);
   console.error("machi request failed", e.name);
   return c.json(

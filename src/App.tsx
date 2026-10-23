@@ -22,6 +22,7 @@ import {
   Camera,
   Globe2,
   Check,
+  AlertCircle,
   ChevronDown,
   ChevronLeft,
   ChevronRight,
@@ -102,8 +103,15 @@ export default function App() {
     [transition, setTransition] = useState(false),
     [notifications, setNotifications] = useState(false),
     [help, setHelp] = useState(false);
+  const pageTitle =
+    [
+      ...nav.filter((n) => n.to !== "/"),
+      { to: "/talks", label: "地域トーク" },
+      { to: "/notes", label: "現地のメモ" },
+      { to: "/admin", label: "運営管理" },
+    ].find((n) => location.pathname.startsWith(n.to))?.label || "地域ホーム";
   useEffect(() => {
-    document.title = `${nav.find((n) => n.to !== "/" && location.pathname.startsWith(n.to))?.label || "地域ホーム"} | machi`;
+    document.title = `${pageTitle} | machi`;
     setTransition(true);
     window.scrollTo(0, 0);
     const t = setTimeout(() => setTransition(false), 180);
@@ -123,7 +131,7 @@ export default function App() {
             machi<span className="brand-dot">.</span>
           </span>
         </Link>
-        <div className="sidebar-region">
+        <Link to="/people" className="sidebar-region">
           <span className="region-icon">
             <MapPin size={18} />
           </span>
@@ -131,8 +139,8 @@ export default function App() {
             <strong>話せる人</strong>
             <small>国・地域から探す</small>
           </div>
-          <LockKeyhole size={13} />
-        </div>
+          <ArrowUpRight size={15} />
+        </Link>
         <nav aria-label="メインナビゲーション">
           {nav.map((n) => (
             <NavLink
@@ -151,6 +159,15 @@ export default function App() {
             </NavLink>
           ))}
         </nav>
+        <NavLink
+          to="/talks"
+          className={({ isActive }) =>
+            "nav-item secondary-nav " + (isActive ? "active" : "")
+          }
+        >
+          <CalendarDays size={19} />
+          <span>地域トーク</span>
+        </NavLink>
         <div className="sidebar-bottom">
           <div className="invite-tag">
             <span className="live-dot" /> 招待制コミュニティ
@@ -185,7 +202,7 @@ export default function App() {
           <div className="breadcrumb">
             <span>コミュニティ</span>
             <ChevronRight size={13} />
-            <span>話せる人</span>
+            <span aria-current="page">{pageTitle}</span>
           </div>
           <Link to="/" className="mobile-brand">
             machi<span>.</span>
@@ -195,6 +212,14 @@ export default function App() {
               <span className="live-dot" />
               招待制コミュニティ
             </span>
+            <Link
+              to="/talks"
+              className="icon-button talks-shortcut"
+              aria-label="地域トークと申込み"
+              title="地域トークと申込み"
+            >
+              <CalendarDays size={20} />
+            </Link>
             <button
               className="icon-button notification-button"
               aria-label="通知を開く"
@@ -393,9 +418,41 @@ function Home() {
           onClick={() => setSearch(!search)}
         >
           <Search size={16} />
-          <span>地域を検索</span>
+          <span>メモを検索</span>
         </button>
       </Heading>
+      <div className="home-actions" aria-label="よく使う機能">
+        <Link to="/rooms" className="home-action glass">
+          <span className="action-icon">
+            <MessageCircle size={23} />
+          </span>
+          <span>
+            <strong>メッセージ</strong>
+            <small>
+              {data.rooms.some((r) => r.unread)
+                ? `${data.rooms.reduce((sum, r) => sum + r.unread, 0)}件の未読`
+                : "会話のつづき"}
+            </small>
+          </span>
+          <ChevronRight size={18} />
+        </Link>
+        <Link to="/talks" className="home-action glass">
+          <span className="action-icon">
+            <CalendarDays size={23} />
+          </span>
+          <span>
+            <strong>地域トーク</strong>
+            <small>
+              {data.bookings.some((b) =>
+                ["confirmed", "pending"].includes(b.status),
+              )
+                ? "自分の申込みを確認"
+                : "募集・自分の申込み"}
+            </small>
+          </span>
+          <ChevronRight size={18} />
+        </Link>
+      </div>
       {search && (
         <div className="search-panel glass">
           <label htmlFor="local-search">話題・メモを検索</label>
@@ -403,7 +460,6 @@ function Home() {
             <Search size={17} />
             <input
               id="local-search"
-              autoFocus
               value={query}
               onChange={(e) => setQuery(e.target.value)}
               placeholder="喫茶店、街歩き…"
@@ -578,7 +634,13 @@ function Home() {
                 key={n.id}
               >
                 <div className="note-photo">
-                  <img src={n.image} alt="" loading="lazy" />
+                  <img
+                    src={n.image}
+                    alt=""
+                    width={640}
+                    height={400}
+                    loading="lazy"
+                  />
                   <span>{n.category}</span>
                 </div>
                 <div className="note-content">
@@ -922,7 +984,7 @@ function TalkDetail() {
         地域トーク
       </Link>
       <div className="detail-photo">
-        <img src={t.image} alt="喫茶店のコーヒー" />
+        <img src={t.image} alt="" width={1200} height={600} />
         <span className="photo-badge">
           <Video size={14} />
           オンライン地域トーク
@@ -930,15 +992,17 @@ function TalkDetail() {
       </div>
       <div className="detail-grid">
         <article>
-          <div className="eyebrow">KYOTO · {t.category}</div>
-          <h1 className="detail-title">{t.title}</h1>
-          <div className="detail-chips">
-            <span>
-              <CalendarDays size={16} />
-              {dateLabel(t.date)}
-            </span>
-            <span>{t.time}〜（日本時間）</span>
-            <span>{t.duration}分</span>
+          <div className="detail-heading">
+            <div className="eyebrow">{t.category}</div>
+            <h1 className="detail-title">{t.title}</h1>
+            <div className="detail-chips">
+              <span>
+                <CalendarDays size={16} />
+                {dateLabel(t.date)}
+              </span>
+              <span>{t.time}〜（日本時間）</span>
+              <span>{t.duration}分</span>
+            </div>
           </div>
           <div className="prose">
             <h2>話すこと</h2>
@@ -1641,12 +1705,46 @@ function MemberDetail() {
 }
 function Rooms() {
   const { data } = useApp(),
-    location = useLocation(),
-    [tab, setTab] = useState(
-      location.search.includes("group") ? "group" : "direct",
-    );
+    [params, setParams] = useSearchParams();
+  const tab = params.get("tab") === "group" ? "group" : "direct";
+  function setTab(next: string) {
+    const nextParams = new URLSearchParams(params);
+    if (next === "group") nextParams.set("tab", "group");
+    else nextParams.delete("tab");
+    setParams(nextParams);
+  }
+  function onTabKey(e: React.KeyboardEvent<HTMLDivElement>) {
+    if (!["ArrowLeft", "ArrowRight", "Home", "End"].includes(e.key)) return;
+    e.preventDefault();
+    const next =
+      e.key === "Home"
+        ? "direct"
+        : e.key === "End"
+          ? "group"
+          : tab === "direct"
+            ? "group"
+            : "direct";
+    setTab(next);
+    document.getElementById(next + "-tab")?.focus();
+  }
+  const query = params.get("q") || "",
+    onlyUnread = params.get("unread") === "1";
+  function filterParam(key: string, value: string) {
+    const next = new URLSearchParams(params);
+    if (value) next.set(key, value);
+    else next.delete(key);
+    setParams(next, { replace: true });
+  }
   const direct = data.rooms.filter((r) => r.kind === "direct"),
     groups = data.rooms.filter((r) => r.kind !== "direct");
+  const matches = (r: (typeof data.rooms)[number]) =>
+    (!onlyUnread || r.unread > 0) &&
+    (!query ||
+      `${r.title} ${r.messages.at(-1)?.body || ""}`
+        .toLocaleLowerCase()
+        .includes(query.trim().toLocaleLowerCase()));
+  const visibleDirect = direct.filter(matches),
+    visibleGroups = groups.filter(matches);
   return (
     <>
       <Heading eyebrow="YOUR CONVERSATIONS" title="メッセージ">
@@ -1655,12 +1753,18 @@ function Rooms() {
           相手を探す
         </Link>
       </Heading>
-      <div className="conversation-tabs" role="tablist" aria-label="会話の種類">
+      <div
+        className="conversation-tabs"
+        role="tablist"
+        aria-label="会話の種類"
+        onKeyDown={onTabKey}
+      >
         <button
           role="tab"
           id="direct-tab"
           aria-controls="conversations-panel"
           aria-selected={tab === "direct"}
+          tabIndex={tab === "direct" ? 0 : -1}
           onClick={() => setTab("direct")}
           className={tab === "direct" ? "active" : ""}
         >
@@ -1671,11 +1775,32 @@ function Rooms() {
           id="group-tab"
           aria-controls="conversations-panel"
           aria-selected={tab === "group"}
+          tabIndex={tab === "group" ? 0 : -1}
           onClick={() => setTab("group")}
           className={tab === "group" ? "active" : ""}
         >
           地域トークの小部屋<span>{groups.length}</span>
         </button>
+      </div>
+      <div className="conversation-tools">
+        <label className="field">
+          <span className="sr-only">会話を検索</span>
+          <input
+            name="conversation-search"
+            type="search"
+            value={query}
+            autoComplete="off"
+            onChange={(e) => filterParam("q", e.target.value)}
+            placeholder="名前・メッセージを検索…"
+          />
+        </label>
+        <CheckChip
+          selected={onlyUnread}
+          onClick={() => filterParam("unread", onlyUnread ? "" : "1")}
+        >
+          <Bell size={15} />
+          未読のみ
+        </CheckChip>
       </div>
       <div
         id="conversations-panel"
@@ -1684,7 +1809,7 @@ function Rooms() {
       >
         {tab === "direct" ? (
           <div className="conversation-list">
-            {direct.map((r) => (
+            {visibleDirect.map((r) => (
               <Link
                 className="conversation-row glass"
                 key={r.id}
@@ -1714,6 +1839,9 @@ function Rooms() {
                 )}
               </Link>
             ))}
+            {!visibleDirect.length && direct.length > 0 && (
+              <Empty>条件に合う会話はありません</Empty>
+            )}
             {!direct.length && (
               <Empty>
                 まだ会話はありません<Link to="/people">話せる人を探す</Link>
@@ -1722,7 +1850,7 @@ function Rooms() {
           </div>
         ) : (
           <div className="rooms-grid">
-            {groups.map((r) => (
+            {visibleGroups.map((r) => (
               <Link
                 key={r.id}
                 className="room-card glass"
@@ -1751,6 +1879,9 @@ function Rooms() {
                 </div>
               </Link>
             ))}
+            {!visibleGroups.length && groups.length > 0 && (
+              <Empty>条件に合う小部屋はありません</Empty>
+            )}
             {!groups.length && (
               <Empty>
                 地域トーク参加後の小部屋が表示されます。
@@ -2229,9 +2360,15 @@ function NoteDetail() {
         現地のメモ
       </Link>
       <div className="note-detail glass">
-        <img className="note-detail-photo" src={n.image} alt={n.title} />
+        <img
+          className="note-detail-photo"
+          src={n.image}
+          alt={n.title}
+          width={1200}
+          height={600}
+        />
         <article>
-          <div className="eyebrow">KYOTO · {n.category}</div>
+          <div className="eyebrow">{n.category}</div>
           <h1>{n.title}</h1>
           <div className="note-detail-author">
             <Avatar name={n.author} src={n.avatarUrl} />
@@ -2287,7 +2424,19 @@ function Consult() {
     [shares, setShares] = useState<string[]>([]),
     [consent, setConsent] = useState(false),
     [busy, setBusy] = useState(false),
-    [success, setSuccess] = useState(false);
+    [success, setSuccess] = useState(false),
+    formHeading = useRef<HTMLHeadingElement>(null);
+  useEffect(() => {
+    if (selected) {
+      formHeading.current?.focus({ preventScroll: true });
+      formHeading.current?.scrollIntoView({
+        block: "start",
+        behavior: window.matchMedia("(prefers-reduced-motion: reduce)").matches
+          ? "instant"
+          : "smooth",
+      });
+    }
+  }, [selected]);
   async function submit(e: FormEvent) {
     e.preventDefault();
     if (!guard()) return;
@@ -2340,7 +2489,7 @@ function Consult() {
       {data.mode === "production" && !data.providers?.length && (
         <Empty>相談を受付中の事業者はいません</Empty>
       )}
-      <div className="providers-grid">
+      <div className="providers-grid" aria-label="相談できるプロ">
         {(data.mode === "preview" ? providers : data.providers || []).map(
           (p) => (
             <div className="provider-card glass" key={p.id}>
@@ -2363,8 +2512,16 @@ function Consult() {
                 className={
                   "button full " + (selected === p.id ? "primary" : "subtle")
                 }
+                aria-pressed={selected === p.id}
                 onClick={() => {
-                  if (guard()) setSelected(p.id);
+                  if (guard()) {
+                    setSelected(p.id);
+                    if (selected === p.id)
+                      formHeading.current?.scrollIntoView({
+                        block: "start",
+                        behavior: "smooth",
+                      });
+                  }
                 }}
               >
                 {selected === p.id ? (
@@ -2384,8 +2541,22 @@ function Consult() {
         )}
       </div>
       {selected && (
-        <form className="consult-form glass" onSubmit={submit}>
-          <SectionTitle title="相談内容" />
+        <form
+          className="consult-form glass"
+          onSubmit={submit}
+          id="consult-request"
+        >
+          <div className="form-section-heading">
+            <span className="action-icon">
+              <Compass size={22} />
+            </span>
+            <div>
+              <h2 ref={formHeading} tabIndex={-1}>
+                相談内容
+              </h2>
+              <p>選んだプロと運営に届きます。</p>
+            </div>
+          </div>
           <label className="field">
             相談先
             <input
@@ -2401,6 +2572,8 @@ function Consult() {
           <label className="field">
             相談のタイトル
             <input
+              name="title"
+              autoComplete="off"
               required
               maxLength={100}
               value={title}
@@ -2548,7 +2721,30 @@ function Consult() {
     </>
   );
 }
+function GoogleMark() {
+  return (
+    <svg aria-hidden="true" width="20" height="20" viewBox="0 0 24 24">
+      <path
+        fill="#4285F4"
+        d="M21.6 12.2c0-.7-.1-1.4-.2-2.1H12v4h5.4a4.6 4.6 0 0 1-2 3v2.5h3.3c1.9-1.7 2.9-4.2 2.9-7.4Z"
+      />
+      <path
+        fill="#34A853"
+        d="M12 22c2.7 0 4.9-.9 6.6-2.4l-3.3-2.5c-.9.6-2 1-3.3 1-2.6 0-4.8-1.7-5.6-4H3v2.6A10 10 0 0 0 12 22Z"
+      />
+      <path
+        fill="#FBBC05"
+        d="M6.4 14.1a6 6 0 0 1 0-4.2V7.3H3a10 10 0 0 0 0 9.4l3.4-2.6Z"
+      />
+      <path
+        fill="#EA4335"
+        d="M12 5.9c1.5 0 2.8.5 3.8 1.5l2.8-2.8A9.7 9.7 0 0 0 12 2a10 10 0 0 0-9 5.3l3.4 2.6c.8-2.3 3-4 5.6-4Z"
+      />
+    </svg>
+  );
+}
 function ProfilePage() {
+  const { hash } = useLocation();
   const { data, setData, toast, guard, refresh } = useApp(),
     [p, setP] = useState<Profile>(data.profile || emptyProfile),
     [busy, setBusy] = useState(false),
@@ -2641,9 +2837,48 @@ function ProfilePage() {
       setBusy(false);
     }
   }
+  const dirty =
+    JSON.stringify(p) !== JSON.stringify(data.profile) ||
+    regionsText !== data.profile.interestedRegions.join("、") ||
+    !!photo ||
+    removePhoto;
+  const [loginParams, setLoginParams] = useSearchParams();
+  const loginMessages: Record<string, string> = {
+    cancelled: "ログインをキャンセルしました。もう一度Googleで続けられます。",
+    expired:
+      "認証の有効期限が切れました。この画面からログインをやり直してください。",
+    not_invited:
+      "このGoogleアカウントは招待されていません。招待されたアカウントを選ぶか、運営へご確認ください。",
+    failed: "Google認証を完了できませんでした。もう一度お試しください。",
+  };
+  const loginReason = loginParams.get("login") || "";
+  const loginMessage = Object.hasOwn(loginMessages, loginReason)
+    ? loginMessages[loginReason]
+    : undefined;
+  useEffect(() => {
+    function warn(event: BeforeUnloadEvent) {
+      if (dirty) event.preventDefault();
+    }
+    window.addEventListener("beforeunload", warn);
+    return () => window.removeEventListener("beforeunload", warn);
+  }, [dirty]);
   return (
     <>
       <Heading eyebrow="YOUR PROFILE" title="プロフィール" />
+      {loginMessage && (
+        <div className="login-feedback glass" role="alert">
+          <AlertCircle size={22} />
+          <p>{loginMessage}</p>
+          <button
+            type="button"
+            className="icon-button"
+            aria-label="ログイン通知を閉じる"
+            onClick={() => setLoginParams({}, { replace: true })}
+          >
+            <X size={18} />
+          </button>
+        </div>
+      )}
       {!data.user && (
         <div className="login-card glass">
           <div className="inline">
@@ -2656,215 +2891,333 @@ function ProfilePage() {
             </div>
           </div>
           {data.configured.google ? (
-            <a href="/api/auth/google" className="button primary">
+            <a href="/api/auth/google" className="button google-button">
+              <GoogleMark />
               Googleで続ける
               <ArrowRight size={17} />
             </a>
           ) : (
             <>
-              <button className="button subtle" disabled>
+              <button className="button google-button" disabled>
                 Google認証は未接続です
               </button>
-              <small>設定完了後にログインできます。</small>
+              <small className="login-setup-note">
+                <AlertCircle size={16} />
+                運営側でGoogle認証の接続設定が必要です。
+              </small>
             </>
           )}
         </div>
       )}
-      <form className="profile-form glass" onSubmit={submit}>
-        <div className="profile-identity">
-          <Avatar
-            name={p.name || "旅"}
-            color="#dce5dc"
-            src={photo ? photoPreview : removePhoto ? "" : p.avatarUrl}
-          />
-          <div>
-            <h2>{p.name || "プロフィール設定"}</h2>
-            <span className="pill">
-              {regionLabel(
-                p.connections.find((c) => c.status === "current")?.regionId ||
-                  "",
-              ) || "居住地域は任意で登録"}
+      <nav className="profile-section-nav" aria-label="プロフィールの項目">
+        {[
+          { id: "profile-basic", label: "基本情報", icon: Camera },
+          { id: "profile-residence", label: "居住・滞在", icon: MapPin },
+          { id: "profile-interests", label: "興味", icon: Coffee },
+          { id: "profile-visit", label: "訪問予定", icon: CalendarDays },
+          { id: "profile-conversation", label: "会話", icon: MessageCircle },
+        ].map((section) => (
+          <a
+            key={section.id}
+            href={"#" + section.id}
+            aria-current={
+              (hash || "#profile-basic") === "#" + section.id
+                ? "location"
+                : undefined
+            }
+          >
+            <section.icon size={16} />
+            {section.label}
+          </a>
+        ))}
+      </nav>
+      <form className="profile-form" onSubmit={submit}>
+        <section
+          className="profile-section glass"
+          id="profile-basic"
+          aria-labelledby="profile-basic-title"
+        >
+          <div className="form-section-heading">
+            <span className="action-icon">
+              <Camera size={22} />
             </span>
+            <div>
+              <h2 id="profile-basic-title">基本情報</h2>
+              <p>名前・写真・国籍</p>
+            </div>
           </div>
-        </div>
-        <div className="profile-photo-controls">
-          <input
-            className="photo-input"
-            id="profile-photo"
-            type="file"
-            accept="image/jpeg,image/png,image/webp"
-            disabled={processingPhoto || busy}
-            onChange={async (e) => {
-              const file = e.currentTarget.files?.[0];
-              e.currentTarget.value = "";
-              if (!file) return;
-              setProcessingPhoto(true);
-              try {
-                setPhoto(await prepareProfilePhoto(file));
-                setRemovePhoto(false);
-              } catch (error) {
-                toast((error as Error).message);
-              } finally {
-                setProcessingPhoto(false);
-              }
-            }}
-          />
-          <label className="button subtle small-button" htmlFor="profile-photo">
-            <Camera size={16} />
-            {processingPhoto ? "写真を準備中…" : "プロフィール写真を選ぶ"}
-          </label>
-          {(photo || (!removePhoto && p.avatarUrl)) && (
-            <button
-              type="button"
-              className="button text-button small-button"
-              onClick={() => {
-                setPhoto(null);
-                setRemovePhoto(true);
+          <div className="profile-identity">
+            <Avatar
+              name={p.name || "旅"}
+              color="#dce5dc"
+              src={photo ? photoPreview : removePhoto ? "" : p.avatarUrl}
+            />
+            <div>
+              <h2>{p.name || "プロフィール設定"}</h2>
+              <span className="pill">
+                {regionLabel(
+                  p.connections.find((c) => c.status === "current")?.regionId ||
+                    "",
+                ) || "居住地域は任意で登録"}
+              </span>
+            </div>
+          </div>
+          <div className="profile-photo-controls">
+            <input
+              className="photo-input"
+              id="profile-photo"
+              type="file"
+              accept="image/jpeg,image/png,image/webp"
+              disabled={processingPhoto || busy}
+              onChange={async (e) => {
+                const file = e.currentTarget.files?.[0];
+                e.currentTarget.value = "";
+                if (!file) return;
+                setProcessingPhoto(true);
+                try {
+                  setPhoto(await prepareProfilePhoto(file));
+                  setRemovePhoto(false);
+                } catch (error) {
+                  toast((error as Error).message);
+                } finally {
+                  setProcessingPhoto(false);
+                }
               }}
+            />
+            <label
+              className="button subtle small-button"
+              htmlFor="profile-photo"
             >
-              写真を削除
-            </button>
-          )}
-          <small>
-            JPEG・PNG・WebP、10MBまで。正方形に整え、「変更を保存」で反映します。
-          </small>
-        </div>
-        <label className="field">
-          表示名
-          <input
-            required
-            maxLength={40}
-            value={p.name}
-            onChange={(e) => setP({ ...p, name: e.target.value })}
-          />
-        </label>
-        <div className="form-row profile-location-fields">
+              <Camera size={16} />
+              {processingPhoto ? "写真を準備中…" : "プロフィール写真を選ぶ"}
+            </label>
+            {(photo || (!removePhoto && p.avatarUrl)) && (
+              <button
+                type="button"
+                className="button text-button small-button"
+                onClick={() => {
+                  setPhoto(null);
+                  setRemovePhoto(true);
+                }}
+              >
+                写真を削除
+              </button>
+            )}
+            <small>
+              JPEG・PNG・WebP、10MBまで。正方形に整え、「変更を保存」で反映します。
+            </small>
+          </div>
           <label className="field">
-            国籍（必須）
+            表示名
             <input
               required
-              maxLength={60}
-              value={p.nationality}
-              placeholder="例：日本"
-              onChange={(e) => setP({ ...p, nationality: e.target.value })}
+              maxLength={40}
+              name="name"
+              autoComplete="nickname"
+              value={p.name}
+              onChange={(e) => setP({ ...p, name: e.target.value })}
             />
           </label>
-        </div>
-        {p.city && !p.connections.some((c) => c.status === "current") && (
-          <p className="legacy-city muted">
-            以前登録した街：{p.city}。居住地域を選ぶと地域に紐づきます。
-          </p>
-        )}
-        <ResidenceEditor
-          value={p.connections}
-          onChange={(connections) => {
-            const current = connections.find((c) => c.status === "current"),
-              r = current && getRegion(current.regionId);
-            setP({
-              ...p,
-              connections,
-              city:
-                r?.kind === "city"
-                  ? r.name
-                  : current || p.connections.some((c) => c.status === "current")
-                    ? ""
-                    : p.city,
-            });
-          }}
-        />
-        <label className="field">
-          興味のある国・地域
-          <textarea
-            aria-label="興味のある国・地域"
-            rows={2}
-            maxLength={800}
-            value={regionsText}
-            placeholder="例：台湾、韓国、北欧"
-            onChange={(e) => setRegionsText(e.target.value)}
-            aria-describedby="profile-regions-help"
-          />
-          <small id="profile-regions-help">
-            カンマ・読点・改行で区切って、12件まで書けます。
-          </small>
-        </label>
-        <label className="field">
-          自己紹介
-          <textarea
-            aria-label="自己紹介"
-            rows={3}
-            maxLength={500}
-            value={p.bio}
-            onChange={(e) => setP({ ...p, bio: e.target.value })}
-            placeholder="好きなことや、この街との思い出"
-          />
-        </label>
-        <div className="field">
-          <span>興味・話せるテーマ</span>
-          <div className="filter-row">
-            {["喫茶店", "街歩き", "古本屋", "写真", "文化", "留学"].map((s) => (
-              <CheckChip
-                key={s}
-                selected={p.interests.includes(s)}
-                onClick={() =>
-                  setP({
-                    ...p,
-                    interests: p.interests.includes(s)
-                      ? p.interests.filter((i) => i !== s)
-                      : [...p.interests, s],
-                  })
-                }
-              >
-                {s}
-              </CheckChip>
-            ))}
+          <div className="form-row profile-location-fields">
+            <label className="field">
+              国籍（必須）
+              <input
+                required
+                maxLength={60}
+                name="nationality"
+                autoComplete="off"
+                value={p.nationality}
+                placeholder="例：日本"
+                onChange={(e) => setP({ ...p, nationality: e.target.value })}
+              />
+            </label>
           </div>
-        </div>
-        <RegionPicker
-          label="次の訪問先"
-          value={p.visitRegionId}
-          onChange={(visitRegionId) => setP({ ...p, visitRegionId })}
-        />
-        <div className="form-row">
+        </section>
+        <section
+          className="profile-section glass"
+          id="profile-residence"
+          aria-labelledby="profile-residence-title"
+        >
+          <div className="form-section-heading">
+            <span className="action-icon">
+              <MapPin size={22} />
+            </span>
+            <div>
+              <h2 id="profile-residence-title">居住・滞在歴</h2>
+              <p>国・地域のみでも登録できます。すべて任意です。</p>
+            </div>
+          </div>
+          {p.city && !p.connections.some((c) => c.status === "current") && (
+            <p className="legacy-city muted">
+              以前登録した街：{p.city}。居住地域を選ぶと地域に紐づきます。
+            </p>
+          )}
+          <ResidenceEditor
+            value={p.connections}
+            onChange={(connections) => {
+              const current = connections.find((c) => c.status === "current"),
+                r = current && getRegion(current.regionId);
+              setP({
+                ...p,
+                connections,
+                city:
+                  r?.kind === "city"
+                    ? r.name
+                    : current ||
+                        p.connections.some((c) => c.status === "current")
+                      ? ""
+                      : p.city,
+              });
+            }}
+          />
+        </section>
+        <section
+          className="profile-section glass"
+          id="profile-interests"
+          aria-labelledby="profile-interests-title"
+        >
+          <div className="form-section-heading">
+            <span className="action-icon">
+              <Coffee size={22} />
+            </span>
+            <div>
+              <h2 id="profile-interests-title">興味・自己紹介</h2>
+              <p>話しかけるきっかけになります。</p>
+            </div>
+          </div>
           <label className="field">
-            次の訪問予定
-            <input
-              type="date"
-              value={p.visitDate}
-              min="2026-10-21"
-              onChange={(e) => setP({ ...p, visitDate: e.target.value })}
+            興味のある国・地域
+            <textarea
+              aria-label="興味のある国・地域"
+              rows={2}
+              maxLength={800}
+              value={regionsText}
+              placeholder="例：台湾、韓国、北欧"
+              onChange={(e) => setRegionsText(e.target.value)}
+              aria-describedby="profile-regions-help"
             />
+            <small id="profile-regions-help">
+              カンマ・読点・改行で区切って、12件まで書けます。
+            </small>
           </label>
           <label className="field">
-            話せる時間
-            <select
-              value={p.availability}
-              onChange={(e) => setP({ ...p, availability: e.target.value })}
-            >
-              {["土日の夜", "平日の夜", "平日の昼", "不定期・都度相談"].map(
+            自己紹介
+            <textarea
+              aria-label="自己紹介"
+              rows={3}
+              maxLength={500}
+              value={p.bio}
+              onChange={(e) => setP({ ...p, bio: e.target.value })}
+              placeholder="好きなことや、この街との思い出"
+            />
+          </label>
+          <div className="field">
+            <span>興味・話せるテーマ</span>
+            <div className="filter-row">
+              {["喫茶店", "街歩き", "古本屋", "写真", "文化", "留学"].map(
                 (s) => (
-                  <option key={s}>{s}</option>
+                  <CheckChip
+                    key={s}
+                    selected={p.interests.includes(s)}
+                    onClick={() =>
+                      setP({
+                        ...p,
+                        interests: p.interests.includes(s)
+                          ? p.interests.filter((i) => i !== s)
+                          : [...p.interests, s],
+                      })
+                    }
+                  >
+                    {s}
+                  </CheckChip>
                 ),
               )}
-            </select>
-          </label>
-        </div>
-        <label className="conversation-opt-in">
-          <input
-            type="checkbox"
-            checked={!!p.acceptsMessages}
-            onChange={(e) => setP({ ...p, acceptsMessages: e.target.checked })}
+            </div>
+          </div>
+        </section>
+        <section
+          className="profile-section glass"
+          id="profile-visit"
+          aria-labelledby="profile-visit-title"
+        >
+          <div className="form-section-heading">
+            <span className="action-icon">
+              <CalendarDays size={22} />
+            </span>
+            <div>
+              <h2 id="profile-visit-title">訪問予定・話せる時間</h2>
+              <p>予定が決まっている範囲で登録できます。</p>
+            </div>
+          </div>
+          <RegionPicker
+            label="次の訪問先"
+            value={p.visitRegionId}
+            onChange={(visitRegionId) => setP({ ...p, visitRegionId })}
           />
-          <span>
-            <strong>新しい1対1の会話を受け付ける</strong>
-            <small>
-              オンにすると、国籍・居住／滞在歴・興味のある国や地域・写真を含むプロフィールが会員の「話せる人」に表示されます。オフにしても、始めた会話は続けられます。
-            </small>
+          <div className="form-row">
+            <label className="field">
+              次の訪問予定
+              <input
+                type="date"
+                value={p.visitDate}
+                min="2026-10-21"
+                onChange={(e) => setP({ ...p, visitDate: e.target.value })}
+              />
+            </label>
+            <label className="field">
+              話せる時間
+              <select
+                value={p.availability}
+                onChange={(e) => setP({ ...p, availability: e.target.value })}
+              >
+                {["土日の夜", "平日の夜", "平日の昼", "不定期・都度相談"].map(
+                  (s) => (
+                    <option key={s}>{s}</option>
+                  ),
+                )}
+              </select>
+            </label>
+          </div>
+        </section>
+        <section
+          className="profile-section glass"
+          id="profile-conversation"
+          aria-labelledby="profile-conversation-title"
+        >
+          <div className="form-section-heading">
+            <span className="action-icon">
+              <MessageCircle size={22} />
+            </span>
+            <div>
+              <h2 id="profile-conversation-title">会話の受付</h2>
+            </div>
+          </div>
+          <label className="conversation-opt-in">
+            <input
+              type="checkbox"
+              checked={!!p.acceptsMessages}
+              onChange={(e) =>
+                setP({ ...p, acceptsMessages: e.target.checked })
+              }
+            />
+            <span>
+              <strong>新しい1対1の会話を受け付ける</strong>
+              <small>
+                オンにすると、国籍・居住／滞在歴・興味のある国や地域・写真を含むプロフィールが会員の「話せる人」に表示されます。オフにしても、始めた会話は続けられます。
+              </small>
+            </span>
+          </label>
+        </section>
+        <div className="profile-savebar glass">
+          <span className={dirty ? "unsaved" : ""}>
+            <span className="save-dot" />
+            {dirty ? "未保存の変更があります" : "保存済み"}
           </span>
-        </label>
-        <button className="button primary" disabled={busy || processingPhoto}>
-          {busy ? "保存中…" : "変更を保存"}
-          <Check size={16} />
-        </button>
+          <button className="button primary" disabled={busy || processingPhoto}>
+            {busy ? "保存中…" : "変更を保存"}
+            <Check size={16} />
+          </button>
+        </div>
       </form>
       <div className="account-actions">
         {(data.mode === "preview" || data.user?.role === "admin") && (
@@ -3058,7 +3411,11 @@ function Admin() {
           </div>
         ))}
       </div>
-      <div className="filter-row">
+      <div
+        className="filter-row admin-tabs"
+        role="group"
+        aria-label="管理する項目"
+      >
         {[
           "予約",
           "通報",

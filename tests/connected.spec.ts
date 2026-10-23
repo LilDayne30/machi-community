@@ -2,6 +2,10 @@ import { openPeopleFilters } from "./helpers";
 import { test, expect } from "@playwright/test";
 // Only the local preview FLAG is changed. Authentication, profiles, room membership,
 // messages, reservations and consultations all use the real local Worker and D1.
+// Let intercepted responses finish before Playwright disposes the request context.
+test.afterEach(async ({ page }) => {
+  await page.unrouteAll({ behavior: "wait" });
+});
 test.beforeEach(async ({ page, context }) => {
   await context.addCookies([
     { name: "machi_session", value: "e2e-ui", domain: "127.0.0.1", path: "/" },

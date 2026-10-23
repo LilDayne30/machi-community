@@ -2,6 +2,10 @@ import { openPeopleFilters } from "./helpers";
 import { test, expect } from "@playwright/test";
 import AxeBuilder from "@axe-core/playwright";
 import { emptyProfile } from "../src/lib/data";
+// Let intercepted responses finish before Playwright disposes the request context.
+test.afterEach(async ({ page }) => {
+  await page.unrouteAll({ behavior: "wait" });
+});
 test.beforeEach(async ({ page }) => {
   await page.goto("/");
   await expect(
@@ -57,7 +61,7 @@ test("ホーム・画像・レスポンシブ・主要画面の2タップ導線"
 test("現地メモのテーマ絞り込み・検索・保存", async ({ page }) => {
   await page.getByRole("button", { name: "古本屋", exact: true }).click();
   await expect(page.locator(".note-card")).toHaveCount(1);
-  await page.getByRole("button", { name: "地域を検索" }).click();
+  await page.getByRole("button", { name: "メモを検索" }).click();
   await page.getByLabel("話題・メモを検索").fill("見つからない語");
   await expect(page.getByText("一致するメモはありません")).toBeVisible();
   await page.getByLabel("話題・メモを検索").fill("雨");
@@ -291,6 +295,7 @@ test("未定義URLは404を表示", async ({ page }) => {
   ).toBeVisible();
 });
 test("アクセシビリティ：ホームと主要画面", async ({ page }) => {
+  test.setTimeout(60000);
   for (const path of [
     "/",
     "/people",
@@ -298,6 +303,9 @@ test("アクセシビリティ：ホームと主要画面", async ({ page }) => 
     "/rooms",
     "/rooms/dm-misaki",
     "/talks",
+    "/talks/t1",
+    "/notes/n1",
+    "/admin",
     "/consult",
     "/profile",
   ]) {
@@ -317,7 +325,17 @@ test("アクセシビリティ：ホームと主要画面", async ({ page }) => 
         })),
       })),
     ).toEqual([]);
-    if (path === "/people" || path === "/people/misaki") {
+    if (
+      [
+        "/people",
+        "/people/misaki",
+        "/profile",
+        "/rooms",
+        "/consult",
+        "/admin",
+        "/talks/t1",
+      ].includes(path)
+    ) {
       await page.screenshot({
         path: `test-results/${test.info().project.name}-${path.slice(1).replaceAll("/", "-")}-rich.png`,
         fullPage: false,
@@ -651,4 +669,78 @@ test("居住と過去の居住を国・街に紐づけて絞り込み、地域�
     .getByRole("button", { name: "あかり メッセージ", exact: true })
     .click();
   await expect(page.locator(".chat-header h1")).toHaveText("あかり");
+});
+
+test("全画面からトーク・プロフィールの項目へ直接移動できる", async ({
+  page,
+}, info) => {
+  await page.goto("/people");
+  await page
+    .getByRole("link", { name: "地域トークと申込み", exact: true })
+    .click();
+  await expect(
+    page.getByRole("heading", { name: "地域トーク", exact: true }),
+  ).toBeVisible();
+  await page.goto("/profile");
+  await page
+    .getByRole("navigation", { name: "プロフィールの項目" })
+    .getByRole("link", { name: "訪問予定", exact: true })
+    .click();
+  await expect(page).toHaveURL(/#profile-visit$/);
+  await expect(
+    page.getByRole("heading", { name: "訪問予定・話せる時間" }),
+  ).toBeInViewport();
+  await expect(
+    page.getByRole("button", { name: "変更を保存", exact: true }),
+  ).toBeInViewport();
+  await page.screenshot({
+    path: `test-results/${info.project.name}-profile-sections.png`,
+    fullPage: false,
+  });
+});
+
+test("会話の検索・未読絞り込み・タブ状態を保持する", async ({ page }) => {
+  await page.goto("/rooms");
+  await page.getByLabel("会話を検索", { exact: true }).fill("美咲");
+  await expect(page.locator(".conversation-row")).toHaveCount(1);
+  await expect(page.locator(".conversation-row")).toContainText("美咲");
+  await page.getByRole("button", { name: "未読のみ", exact: true }).click();
+  await expect(page).toHaveURL(/unread=1/);
+  await page.reload();
+  await expect(page.getByLabel("会話を検索", { exact: true })).toHaveValue(
+    "美咲",
+  );
+  await expect(
+    page.getByRole("button", { name: "未読のみ", exact: true }),
+  ).toHaveAttribute("aria-pressed", "true");
+  await page.getByLabel("会話を検索", { exact: true }).fill("");
+  await page.getByRole("tab", { name: /1対1/ }).focus();
+  await page.keyboard.press("ArrowRight");
+  await expect(
+    page.getByRole("tab", { name: /地域トークの小部屋/ }),
+  ).toHaveAttribute("aria-selected", "true");
+  await expect(page).toHaveURL(/tab=group/);
+  await page.reload();
+  await expect(
+    page.getByRole("tab", { name: /地域トークの小部屋/ }),
+  ).toHaveAttribute("aria-selected", "true");
+});
+
+test("Googleログインの失敗理由と再試行先を表示", async ({ page }) => {
+  await page.goto("/profile?login=expired");
+  await expect(page.getByRole("alert")).toContainText(
+    "認証の有効期限が切れました",
+  );
+  await page.getByRole("button", { name: "ログイン通知を閉じる" }).click();
+  await expect(page.getByRole("alert")).toHaveCount(0);
+  await expect(page).toHaveURL(/\/profile$/);
+  await page.goto("/profile?login=not_invited");
+  await expect(page.getByRole("alert")).toContainText("招待されたアカウント");
+  for (const reason of ["__proto__", "constructor", "unknown"]) {
+    await page.goto("/profile?login=" + reason);
+    await expect(
+      page.getByRole("heading", { name: "プロフィール", exact: true }),
+    ).toBeVisible();
+    await expect(page.getByRole("alert")).toHaveCount(0);
+  }
 });

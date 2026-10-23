@@ -270,9 +270,15 @@ test("Google未接続・不正なOAuthコールバック・セッション偽造
   request,
 }) => {
   expect((await request.get("/api/auth/google")).status()).toBe(503);
-  expect(
-    (await request.get("/api/auth/callback?state=forged&code=forged")).status(),
-  ).toBe(400);
+  const callback = await request.get(
+    "/api/auth/callback?state=forged&code=forged",
+    { maxRedirects: 0 },
+  );
+  expect(callback.status()).toBe(303);
+  expect(callback.headers().location).toBe(
+    "http://127.0.0.1:5173/profile?login=expired",
+  );
+  expect(callback.headers()["set-cookie"]).not.toContain("machi_session=");
   const b = await (
     await request.get("/api/bootstrap", {
       headers: { Cookie: "machi_session=forged" },

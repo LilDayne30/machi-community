@@ -4,7 +4,8 @@ export default defineConfig({
   fullyParallel: false,
   workers: 1,
   retries: 0,
-  timeout: 30000,
+  timeout: 60000,
+  expect: { timeout: 10000 },
   globalSetup: "./tests/global-setup.ts",
   reporter: [
     ["list"],
