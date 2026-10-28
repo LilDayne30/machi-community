@@ -6,6 +6,7 @@ import { Provider } from "./lib/store";
 import App from "./App";
 import "./styles.css";
 import "./liquid.css";
+import "./motion.css";
 ReactDOM.createRoot(document.getElementById("root")!).render(
   <React.StrictMode>
     <BrowserRouter>

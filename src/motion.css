@@ -1,0 +1,438 @@
+/* Luminous glass: a shared material and motion layer for the member app. */
+:root {
+  --motion-spring: cubic-bezier(0.16, 1, 0.3, 1);
+  --motion-quick: 180ms;
+  --motion-surface: 420ms;
+  --glass-edge:
+    inset 0 2px 1px #fff, inset 1px 0 1px #ffffffd9, inset 0 -1px 1px #b7c7bc38;
+  --glass-depth:
+    0 2px 4px #28453705, 0 12px 30px -18px #34533e40,
+    0 32px 60px -42px #2b493e45;
+}
+
+/* Soft light moves behind the interface; the readable surfaces stay still. */
+.app-shell {
+  isolation: isolate;
+}
+.ambient-light {
+  position: fixed;
+  inset: 0;
+  z-index: -1;
+  overflow: hidden;
+  pointer-events: none;
+  contain: strict;
+}
+.ambient-light > span {
+  position: absolute;
+  width: min(70vw, 800px);
+  aspect-ratio: 1;
+  border-radius: 50%;
+  background: radial-gradient(
+    circle,
+    #d0e5d3a3,
+    #e2eee454 43%,
+    transparent 70%
+  );
+  top: -220px;
+  right: -100px;
+  animation: light-drift 18s ease-in-out infinite alternate;
+}
+.ambient-light > span + span {
+  top: 38%;
+  left: 3%;
+  background: radial-gradient(
+    circle,
+    #f0dfc275,
+    #f6eddd38 42%,
+    transparent 70%
+  );
+  animation-duration: 23s;
+  animation-direction: alternate-reverse;
+}
+@keyframes light-drift {
+  from {
+    transform: translate3d(-3%, 0, 0) scale(0.95);
+    opacity: 0.6;
+  }
+  to {
+    transform: translate3d(8%, 12%, 0) scale(1.12);
+    opacity: 1;
+  }
+}
+[data-motion="still"] .ambient-light > span,
+[data-motion="still"] .discovery-globe::after {
+  animation-play-state: paused;
+}
+
+/* Layered rims, small contact shadows, and a highlight following the pointer. */
+.app-shell .glass {
+  box-shadow: var(--glass-edge), var(--glass-depth);
+}
+:is(
+  .home-action,
+  .home-discovery,
+  .person-card,
+  .talk-card,
+  .room-preview,
+  .conversation-row,
+  .note-card,
+  .provider-card
+) {
+  position: relative;
+  isolation: isolate;
+  transition:
+    box-shadow var(--motion-surface) var(--motion-spring),
+    border-color var(--motion-quick),
+    translate var(--motion-surface) var(--motion-spring);
+}
+:is(
+  .home-action,
+  .home-discovery,
+  .person-card,
+  .talk-card,
+  .room-preview,
+  .conversation-row,
+  .note-card,
+  .provider-card
+)::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  z-index: 3;
+  border-radius: inherit;
+  pointer-events: none;
+  opacity: 0;
+  background: radial-gradient(
+    260px circle at var(--light-x, 50%) var(--light-y, 0%),
+    #ffffff55,
+    #ffffff18 42%,
+    transparent 72%
+  );
+  box-shadow: inset 0 1px 0 #fff;
+  transition: opacity 420ms ease;
+}
+[data-lit="true"]::after {
+  opacity: 0.65;
+}
+
+.home-action .action-icon,
+.discovery-globe,
+.cover-pearl {
+  transition:
+    transform 650ms var(--motion-spring),
+    box-shadow 450ms ease;
+}
+.home-discovery {
+  overflow: hidden;
+}
+.discovery-globe {
+  position: relative;
+}
+.discovery-globe::after {
+  content: "";
+  position: absolute;
+  inset: -12px;
+  border-radius: 50%;
+  border: 1px solid #ffffffd9;
+  border-top-color: #a5c2ac99;
+  border-bottom-color: #c3bda577;
+  animation: orbit-light 24s linear infinite;
+  pointer-events: none;
+}
+@keyframes orbit-light {
+  to {
+    transform: rotate(360deg);
+  }
+}
+.home-discovery h2 {
+  letter-spacing: -0.035em;
+}
+.home-discovery::before {
+  content: "";
+  position: absolute;
+  pointer-events: none;
+  width: 300px;
+  height: 300px;
+  border-radius: 50%;
+  border: 1px solid #ffffffc9;
+  box-shadow:
+    0 0 0 34px #ffffff29,
+    0 0 0 68px #ffffff20;
+  right: -100px;
+  top: -210px;
+}
+
+/* The eye follows a short sequence on entry, without hiding content. */
+@media (prefers-reduced-motion: no-preference) {
+  .page-scene .home-action {
+    animation: surface-arrive 650ms var(--motion-spring) backwards;
+  }
+  .page-scene .home-action:nth-child(2) {
+    animation-delay: 55ms;
+  }
+  .page-scene .home-discovery {
+    animation: surface-arrive 750ms 90ms var(--motion-spring) backwards;
+  }
+  .page-scene .page-heading h1 {
+    animation: heading-arrive 650ms var(--motion-spring) backwards;
+  }
+  .person-cover .cover-globe {
+    animation: map-arrive 1.2s var(--motion-spring) backwards;
+  }
+  .message {
+    animation: message-arrive 320ms var(--motion-spring) backwards;
+  }
+  .search-panel {
+    animation: surface-arrive 350ms var(--motion-spring) backwards;
+  }
+  .chip.selected svg {
+    animation: check-arrive 350ms var(--motion-spring);
+  }
+}
+@keyframes surface-arrive {
+  from {
+    transform: translate3d(0, 22px, 0) scale(0.98);
+  }
+}
+@keyframes heading-arrive {
+  from {
+    transform: translate3d(0, 10px, 0);
+  }
+}
+@keyframes map-arrive {
+  from {
+    transform: translate3d(18px, -8px, 0) rotate(-35deg) scale(1.1);
+  }
+}
+@keyframes message-arrive {
+  from {
+    transform: translate3d(0, 9px, 0) scale(0.985);
+  }
+}
+@keyframes check-arrive {
+  from {
+    transform: scale(0.4) rotate(-20deg);
+  }
+}
+
+/* Tactile controls: press, release, and focus share the same rhythm. */
+:is(
+  .button,
+  .chip,
+  .icon-button,
+  .home-residence-shortcuts a,
+  .bottom-nav > a
+) {
+  position: relative;
+  isolation: isolate;
+  transition:
+    transform 300ms var(--motion-spring),
+    background 220ms ease,
+    box-shadow 300ms ease,
+    border-color 220ms ease,
+    color 220ms ease;
+}
+:is(.button, .chip, .icon-button):active {
+  transform: translateY(1px) scale(0.965);
+}
+:is(
+  .button,
+  .chip,
+  .icon-button,
+  .home-action,
+  .home-residence-shortcuts a,
+  .bottom-nav > a
+):focus-visible {
+  outline: 3px solid #4e8568;
+  outline-offset: 4px;
+}
+.button.primary {
+  background: linear-gradient(145deg, #40765c, #28533f);
+  border-color: #315e47;
+  box-shadow:
+    inset 0 1px 1px #ffffff59,
+    inset 0 -2px 1px #173d344d,
+    0 6px 12px -6px #24523870;
+}
+.button.primary:active {
+  box-shadow:
+    inset 0 2px 5px #183a4060,
+    0 2px 4px #24523820;
+}
+.button > svg,
+.section-title a > svg,
+.home-residence-shortcuts a > svg:last-child {
+  transition: transform 350ms var(--motion-spring);
+}
+.tap-wave {
+  position: absolute;
+  inset: 0;
+  overflow: hidden;
+  pointer-events: none;
+  border-radius: inherit;
+  z-index: 5;
+  transform-origin: var(--wave-x) var(--wave-y);
+}
+.tap-wave::before {
+  content: "";
+  position: absolute;
+  width: var(--wave-size);
+  height: var(--wave-size);
+  border-radius: 50%;
+  left: var(--wave-x);
+  top: var(--wave-y);
+  translate: -50% -50%;
+  background: radial-gradient(
+    circle,
+    #78a68f42,
+    #ffffff59 46%,
+    transparent 70%
+  );
+}
+.button.primary .tap-wave::before {
+  background: radial-gradient(circle, #ffffff73, transparent 65%);
+}
+
+/* A single glass lens slides between navigation items. */
+.sidebar nav .nav-item {
+  isolation: isolate;
+  position: relative;
+}
+.sidebar nav .nav-item.active {
+  background: transparent;
+  box-shadow: none;
+}
+.sidebar-nav-active {
+  position: absolute;
+  z-index: -1;
+  inset: 0;
+  border-radius: inherit;
+  background: linear-gradient(130deg, #fffffffa, #e4eddfd9);
+  box-shadow:
+    var(--glass-edge),
+    0 5px 12px -8px #304a3366;
+  pointer-events: none;
+}
+.sidebar .nav-item svg,
+.bottom-nav > a > svg {
+  transition: transform 450ms var(--motion-spring);
+}
+.sidebar .nav-item.active > svg {
+  transform: scale(1.07);
+}
+.bottom-nav > a.active > svg {
+  transform: translateY(-2px) scale(1.1);
+}
+.field :is(input, select, textarea):focus {
+  box-shadow:
+    0 0 0 4px #608a6914,
+    inset 0 1px 3px #34583e08;
+  border-color: #89aa91;
+}
+.modal-backdrop {
+  animation: backdrop-arrive 220ms ease backwards;
+}
+@keyframes backdrop-arrive {
+  from {
+    background-color: transparent;
+    backdrop-filter: blur(0);
+  }
+}
+.sk {
+  background: linear-gradient(105deg, #e4ebe2 25%, #f9fcf7 44%, #e4ebe2 65%);
+  background-size: 230% 100%;
+}
+
+@media (hover: hover) and (pointer: fine) {
+  :is(
+    .home-action,
+    .talk-card,
+    .room-preview,
+    .conversation-row,
+    .note-card,
+    .provider-card
+  ):hover {
+    translate: 0 -4px;
+    box-shadow:
+      var(--glass-edge),
+      0 5px 9px -5px #2e51391c,
+      0 22px 42px -26px #36563d66;
+  }
+  .home-action:hover .action-icon {
+    transform: rotate(-9deg) scale(1.08);
+  }
+  .home-discovery:hover .discovery-globe {
+    transform: rotate(-9deg) scale(1.04);
+  }
+  .person-card:hover .cover-pearl {
+    transform: translateY(-3px) rotate(8deg);
+  }
+  .talk-photo > img {
+    transition: transform 850ms var(--motion-spring);
+  }
+  .talk-card:hover .talk-photo > img {
+    transform: scale(1.045);
+  }
+  .button:hover > svg:last-child,
+  .section-title a:hover > svg,
+  .home-residence-shortcuts a:hover > svg:last-child {
+    transform: translate(2px, -2px);
+  }
+  .icon-button:hover > svg {
+    transform: rotate(-8deg);
+  }
+}
+@media (max-width: 760px) {
+  .ambient-light > span {
+    width: 110vw;
+    top: -100px;
+    right: -100px;
+  }
+  .ambient-light > span + span {
+    top: 50%;
+    left: -40%;
+  }
+  .discovery-globe::after {
+    inset: -7px;
+  }
+  .bottom-nav {
+    box-shadow:
+      var(--glass-edge),
+      0 12px 40px #31483726;
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .ambient-light > span,
+  .discovery-globe::after {
+    animation: none;
+  }
+  .tap-wave {
+    display: none;
+  }
+  .app-shell *,
+  .app-shell *::before,
+  .app-shell *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
+  }
+  :is(
+    .home-action,
+    .talk-card,
+    .room-preview,
+    .conversation-row,
+    .note-card,
+    .provider-card
+  ):hover {
+    translate: none;
+  }
+  .home-action:hover .action-icon,
+  .home-discovery:hover .discovery-globe,
+  .person-card:hover .cover-pearl,
+  .talk-card:hover .talk-photo > img,
+  .button:hover > svg,
+  .icon-button:hover > svg {
+    transform: none;
+  }
+}

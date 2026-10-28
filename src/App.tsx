@@ -10,6 +10,7 @@ import {
   useSearchParams,
 } from "react-router-dom";
 import { AnimatePresence, motion } from "motion/react";
+import { useGlassEffects } from "./components/useGlassEffects";
 import {
   ArrowDown,
   ArrowLeft,
@@ -98,6 +99,7 @@ const nav = [
   { to: "/profile", label: "プロフィール", icon: Settings2 },
 ];
 export default function App() {
+  const effectsRef = useGlassEffects();
   const { data, loading, error, notify } = useApp(),
     location = useLocation(),
     [transition, setTransition] = useState(false),
@@ -118,7 +120,11 @@ export default function App() {
     return () => clearTimeout(t);
   }, [location.pathname]);
   return (
-    <div className="app-shell">
+    <div className="app-shell" ref={effectsRef}>
+      <div className="ambient-light" aria-hidden="true">
+        <span />
+        <span />
+      </div>
       <a className="skip" href="#main">
         コンテンツへ
       </a>
@@ -151,10 +157,27 @@ export default function App() {
                 isActive ? "nav-item active" : "nav-item"
               }
             >
-              <n.icon size={19} />
-              <span>{n.label}</span>
-              {n.to === "/rooms" && data.rooms.some((r) => r.unread > 0) && (
-                <span className="nav-dot" />
+              {({ isActive }) => (
+                <>
+                  {isActive && (
+                    <motion.span
+                      className="sidebar-nav-active"
+                      aria-hidden="true"
+                      layoutId="sidebar-navigation-surface"
+                      transition={{
+                        type: "spring",
+                        stiffness: 380,
+                        damping: 32,
+                      }}
+                    />
+                  )}
+                  <n.icon size={19} />
+                  <span>{n.label}</span>
+                  {n.to === "/rooms" &&
+                    data.rooms.some((r) => r.unread > 0) && (
+                      <span className="nav-dot" />
+                    )}
+                </>
               )}
             </NavLink>
           ))}
@@ -260,10 +283,11 @@ export default function App() {
             <AnimatePresence mode="wait">
               <motion.div
                 key={location.pathname}
-                initial={{ opacity: 0, y: 12 }}
+                className="page-scene"
+                initial={{ opacity: 0, y: 18 }}
                 animate={{ opacity: 1, y: 0 }}
                 exit={{ opacity: 0 }}
-                transition={{ duration: 0.28 }}
+                transition={{ duration: 0.36, ease: [0.16, 1, 0.3, 1] }}
               >
                 <Routes>
                   <Route path="/" element={<Home />} />

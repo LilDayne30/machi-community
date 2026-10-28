@@ -257,6 +257,41 @@ test("モーダルをEscapeで閉じる・キーボード操作", async ({ page 
   await expect(page.getByRole("dialog")).toHaveCount(0);
   await expect(page.getByRole("button", { name: "通知を開く" })).toBeFocused();
 });
+test("動きを減らす設定を即時反映し、絞り込みとキーボード操作を保つ", async ({
+  page,
+}) => {
+  // Switch after mount as well: OS accessibility preferences can change mid-session.
+  await page.emulateMedia({ reducedMotion: "reduce" });
+  await expect
+    .poll(() =>
+      page.evaluate(
+        () =>
+          document
+            .getAnimations()
+            .filter(
+              (animation) =>
+                animation.playState === "running" &&
+                animation.effect?.getComputedTiming().iterations === Infinity,
+            ).length,
+      ),
+    )
+    .toBe(0);
+  const notification = page.getByRole("button", { name: "通知を開く" });
+  await notification.click();
+  await expect(
+    page.getByRole("dialog", { name: "通知", exact: true }),
+  ).toBeVisible();
+  await page.keyboard.press("Escape");
+  await expect(notification).toBeFocused();
+  await expect(page.getByRole("dialog")).toHaveCount(0);
+  await page.goto("/people");
+  await page.getByRole("button", { name: "写真", exact: true }).click();
+  await expect(page.locator(".person-card")).toHaveCount(1);
+  await expect(page.locator(".person-card")).toContainText("あかり");
+  expect(
+    await page.evaluate(() => document.documentElement.scrollWidth),
+  ).toBeLessThanOrEqual(page.viewportSize()!.width);
+});
 test("プロフィールから別サイトの管理画面へ移動", async ({ page }) => {
   await page.goto("/profile");
   await page.getByRole("link", { name: "運営管理", exact: true }).click();
