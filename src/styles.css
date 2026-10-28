@@ -158,9 +158,9 @@ select:focus-visible,
   display: flex;
   align-items: center;
   gap: 10px;
-  padding: 0 18px;
+  padding: 0 8px;
   font-family: "DM Sans", sans-serif;
-  font-size: 31px;
+  font-size: 28px;
   letter-spacing: -1.7px;
   font-weight: 700;
 }
@@ -169,6 +169,7 @@ select:focus-visible,
   color: #5d6c55;
 }
 .brand-mark {
+  flex-shrink: 0;
   display: flex;
   align-items: center;
   justify-content: center;

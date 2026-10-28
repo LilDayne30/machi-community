@@ -111,7 +111,7 @@ export default function App() {
       { to: "/admin", label: "運営管理" },
     ].find((n) => location.pathname.startsWith(n.to))?.label || "地域ホーム";
   useEffect(() => {
-    document.title = `${pageTitle} | machi`;
+    document.title = `${pageTitle} | Roamigo`;
     setTransition(true);
     window.scrollTo(0, 0);
     const t = setTimeout(() => setTransition(false), 180);
@@ -125,10 +125,10 @@ export default function App() {
       <aside className="sidebar glass">
         <Link to="/" className="brand">
           <span className="brand-mark" aria-hidden="true">
-            m<span />
+            R<span />
           </span>
           <span>
-            machi<span className="brand-dot">.</span>
+            Roamigo<span className="brand-dot">.</span>
           </span>
         </Link>
         <Link to="/people" className="sidebar-region">
@@ -205,7 +205,7 @@ export default function App() {
             <span aria-current="page">{pageTitle}</span>
           </div>
           <Link to="/" className="mobile-brand">
-            machi<span>.</span>
+            Roamigo<span>.</span>
           </Link>
           <div className="topbar-right">
             <span className="community-tag">
@@ -292,7 +292,7 @@ export default function App() {
           )}
           <footer className="page-footer">
             <span>
-              machi<span className="brand-dot">.</span>
+              Roamigo<span className="brand-dot">.</span>
             </span>
             <small>地域と1対1の会話</small>
             <span className="footer-status">
@@ -1241,10 +1241,10 @@ function RegionCover({ person }: { person: CommunityMember }) {
     <div className="person-cover" aria-hidden="true">
       <span className="cover-country">
         <Globe2 size={13} />
-        {country?.name || "machi."}
+        {country?.name || "Roamigo"}
       </span>
       <Globe2 className="cover-globe" strokeWidth={0.55} />
-      <span className="cover-city">{region?.english || "machi."}</span>
+      <span className="cover-city">{region?.english || "Roamigo"}</span>
       <span className="cover-pearl">
         <MapPin size={23} strokeWidth={1.4} />
       </span>

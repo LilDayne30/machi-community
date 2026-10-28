@@ -885,8 +885,8 @@ app.post("/api/rooms/:id/messages", async (c) => {
         "reply:" + id + ":" + p.id,
         p.email,
         direct
-          ? "machi：メッセージが届きました"
-          : "machi：小部屋に返信が届きました",
+          ? "Roamigo：メッセージが届きました"
+          : "Roamigo：小部屋に返信が届きました",
         '<p>新しいメッセージがあります。</p><p><a href="' +
           safeText(c.env.APP_ORIGIN + "/rooms/" + rid) +
           '">会話を開く</a></p>',
@@ -1078,7 +1078,7 @@ app.post("/api/bookings", async (c) => {
       db,
       "booking:" + id,
       u.email,
-      "machi：地域トークの参加が確定しました",
+      "Roamigo：地域トークの参加が確定しました",
       "<p>" +
         safeText(talk.title) +
         "の参加が確定しました。</p><p>開催前に会議リンクをお送りします。</p>",
@@ -1135,7 +1135,7 @@ app.delete("/api/bookings/:id", async (c) => {
       db,
       "cancel:" + b.id,
       u.email,
-      "machi：キャンセルを受け付けました",
+      "Roamigo：キャンセルを受け付けました",
       "<p>予約をキャンセルしました。</p><p>" +
         (refund ? "返金処理を受け付けました。" : "") +
         "</p>",
@@ -1205,7 +1205,7 @@ app.post("/api/consultations", async (c) => {
       c.env.DB,
       "consult:" + id,
       u.email,
-      "machi：プロへの相談を受け付けました",
+      "Roamigo：プロへの相談を受け付けました",
       "<p>運営が確認し、相談先との調整を進めます。</p>",
     ),
   ]);
@@ -1272,8 +1272,8 @@ app.post("/api/stripe/webhook", async (c) => {
           .bind(
             "paid:" + b.id,
             b.email,
-            "machi：参加が確定しました",
-            "machi：返金手続きを受け付けました",
+            "Roamigo：参加が確定しました",
+            "Roamigo：返金手続きを受け付けました",
             "<p>入金を確認しました。開催前に会議リンクをお送りします。</p>",
             "<p>予約を確定できなかったため返金します。</p>",
             b.id,
@@ -1545,7 +1545,7 @@ app.post("/api/admin/talks/:id/cancel", async (c) => {
         db,
         "cancel:" + b.id,
         b.email,
-        "machi：地域トークの中止",
+        "Roamigo：地域トークの中止",
         "<p>" +
           safeText(t.title) +
           "</p><p>" +
@@ -1730,7 +1730,7 @@ app.post("/api/admin/meeting", async (c) => {
         c.env.DB,
         "meeting:" + p.talkId + ":" + meetingKey + ":" + m.id,
         m.email,
-        "machi：地域トークの会議リンク",
+        "Roamigo：地域トークの会議リンク",
         "<p>" +
           safeText(t.title) +
           '</p><a href="' +
@@ -2040,7 +2040,7 @@ export default {
             env.DB,
             "reminder:" + r.id,
             r.email,
-            "machi：地域トークはまもなく開催です",
+            "Roamigo：地域トークはまもなく開催です",
             "<p>" +
               safeText(r.title) +
               "</p>" +

@@ -20,6 +20,17 @@
 
 実行コマンドは `npm run test:all`、`npm audit --audit-level=high`、`npx wrangler deploy --dry-run --outdir .wrangler/build`。
 
+## 10月28日の名称変更
+
+表示名を **Roamigo** に変更しました。利用者・管理のロゴ、ページタイトル、PWAのインストール名、SVG / PNGアイコン、通知メールの件名、READMEを更新しています。ロゴの文字数に合わせて幅を調整しました。既存のCookie・保存キー・公開先の識別名は引き継ぐため、名称変更によるログアウトやプレビューデータの初期化は行いません。
+
+- TypeScript / 両フロントの本番ビルド、単体テスト48件が合格。
+- PC・スマホのホーム / 主要導線、プロフィールから別管理サイトへの移動、管理11画面のはみ出し・WCAG自動検査を含む既存6ケースが合格（失敗・スキップ0）。今回の変更に対する確認であり、160件を再実行したという意味ではありません。
+- ビルドされたPWAマニフェストの名称、両ページのタイトル、192px / 512pxアイコン、両サイトのSVGの一致を確認。
+- 実ブラウザでPCと320px幅の表示を確認。320px幅でページの横はみ出しはありません。
+
+結果は `.wrangler/roamigo-brand-results.json` に保存しています。[利用者PC](screenshots/roamigo-home-desktop.png) / [利用者スマホ](screenshots/roamigo-home-mobile.png) / [管理PC](screenshots/roamigo-admin-desktop.png)。
+
 ## 10月24日の管理サイトの確認
 
 全体実行 `npm run test:all` は単体48件・ブラウザ/API 111件の計159件が合格しました。最後に、利用停止中の事業者を相談先から外し、新規相談のAPI送信を拒否するケースを1件追加しました。この変更に対して単体48件と、利用者・管理の実接続UI / API 47件を再実行して全件合格しています。重複実行を加算しない検証ケース数は160件です。全体のJSON・HTMLレポートは `test-results/` / `playwright-report/`、最後の追加検証は `.wrangler/backend-final-results.json` に分けて保持しています。

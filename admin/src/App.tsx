@@ -454,7 +454,7 @@ export default function App() {
     setMenu(false);
     setQuery("");
     setFilter("all");
-    document.title = current.label + " | machi 運営管理";
+    document.title = current.label + " | Roamigo 運営管理";
     window.scrollTo(0, 0);
     heading.current?.focus();
   }, [location.pathname]);
@@ -755,9 +755,9 @@ export default function App() {
           id="admin-navigation"
         >
           <a href="/" className="brand">
-            <span className="brand-icon">m</span>
+            <span className="brand-icon">R</span>
             <span>
-              machi<small>運営管理</small>
+              Roamigo<small>運営管理</small>
             </span>
           </a>
           <div className="workspace">
@@ -2068,7 +2068,7 @@ export default function App() {
               </motion.div>
             </AnimatePresence>
             <footer className="page-footer">
-              <span>machi / 運営管理</span>
+              <span>Roamigo / 運営管理</span>
               <span>
                 表示日時は日本時間 · 取得上限：会員500件 / その他100〜300件
               </span>
