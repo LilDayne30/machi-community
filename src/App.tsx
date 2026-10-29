@@ -1909,7 +1909,7 @@ function Consult() {
       <div className="info-strip glass">
         <ShieldCheck size={20} />
         <p>
-          あなたが依頼したときだけ、選んだ事業者に相談が届きます。サービス代金は事業者へ直接お支払いください。
+          あなたが依頼したときだけ、選んだ事業者に相談が届きます。
         </p>
       </div>
       {data.mode === "production" && !data.providers?.length && (
