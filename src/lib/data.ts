@@ -1,4 +1,5 @@
 import type { RegionConnection } from "./regions";
+import type { Participation } from "./participation";
 export type Person = {
   name: string;
   role: "住んでいる" | "最近訪れた" | "事業者" | "進行役";
@@ -43,6 +44,7 @@ export type Message = {
   avatarUrl?: string;
 };
 export type CommunityMember = {
+  participation?: Participation;
   id: string;
   name: string;
   bio: string;
@@ -94,6 +96,7 @@ export type Consultation = {
   status: "submitted" | "accepted" | "completed" | "cancelled";
 };
 export type Profile = {
+  participation?: Participation;
   name: string;
   bio: string;
   relation: string;
@@ -150,6 +153,29 @@ export const people: Person[] = [
 export const communityPeople: CommunityMember[] = [
   {
     id: "misaki",
+    participation: {
+      roles: ["alumni", "local"],
+      stage: "returned",
+      destinations: [],
+      questions: [],
+      experiences: [
+        {
+          regionId: "country:CA",
+          level: "high_school",
+          format: "exchange",
+          startYear: 2022,
+          endYear: 2023,
+          months: 10,
+          topics: ["学校生活", "友達づくり", "ホストファミリー"],
+        },
+      ],
+      local: {
+        kind: "resident",
+        regionId: "city:JP:kyoto",
+        languages: "日本語・英語",
+        topics: "喫茶店、街歩き、日々の暮らし",
+      },
+    },
     connections: [
       {
         regionId: "city:JP:kyoto",
@@ -180,6 +206,19 @@ export const communityPeople: CommunityMember[] = [
   },
   {
     id: "yuta",
+    participation: {
+      roles: ["local"],
+      stage: "curious",
+      destinations: [],
+      questions: [],
+      experiences: [],
+      local: {
+        kind: "student",
+        regionId: "city:JP:tokyo",
+        languages: "日本語・英語",
+        topics: "学生生活、古本屋、喫茶店",
+      },
+    },
     connections: [
       {
         regionId: "city:JP:tokyo",
@@ -210,6 +249,29 @@ export const communityPeople: CommunityMember[] = [
   },
   {
     id: "akari",
+    participation: {
+      roles: ["explorer", "alumni", "local"],
+      stage: "abroad",
+      destinations: ["country:JP"],
+      questions: ["学校生活"],
+      experiences: [
+        {
+          regionId: "country:KR",
+          level: "high_school",
+          format: "direct",
+          startYear: 2018,
+          endYear: 2020,
+          months: 24,
+          topics: ["学校生活", "英語・言語", "準備・持ち物"],
+        },
+      ],
+      local: {
+        kind: "studying_abroad",
+        regionId: "city:TW:taipei",
+        languages: "日本語・韓国語・中国語",
+        topics: "台北での学生生活、写真、街歩き",
+      },
+    },
     connections: [
       {
         regionId: "city:TW:taipei",

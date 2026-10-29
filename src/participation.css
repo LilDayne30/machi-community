@@ -1,0 +1,366 @@
+/* The two ways to meet people share the existing white glass material. */
+.home-axis-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 18px;
+  margin-bottom: 24px;
+}
+.home-axis-card {
+  display: flex;
+  align-items: center;
+  gap: 18px;
+  padding: 26px;
+  border-radius: 28px;
+  transition:
+    translate 350ms var(--motion-spring),
+    box-shadow 350ms;
+}
+.home-axis-card:first-child {
+  background: linear-gradient(135deg, #fff, #edf3f8d6);
+}
+.home-axis-card > div {
+  flex: 1;
+  min-width: 0;
+}
+.home-axis-card h2 {
+  margin: 0;
+  font-size: 19px;
+  letter-spacing: -0.025em;
+}
+.home-axis-card p {
+  color: var(--muted);
+  margin-top: 6px;
+  font-size: 13px;
+  line-height: 1.7;
+}
+.axis-symbol {
+  flex-shrink: 0;
+  width: 56px;
+  height: 62px;
+  display: grid;
+  place-items: center;
+  border-radius: 20px;
+  background: linear-gradient(140deg, #fff, #dfeadb);
+  box-shadow:
+    var(--glass-edge),
+    0 7px 15px -10px #315c4b55;
+}
+.home-axis-card:first-child .axis-symbol {
+  background: linear-gradient(140deg, #fff, #e0eaf3);
+  color: #466579;
+}
+.discovery-axes {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 12px;
+  margin-bottom: 20px;
+}
+.discovery-axes > button {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 12px;
+  min-height: 62px;
+  border: 1px solid #ffffffeb;
+  border-radius: 22px;
+  padding: 12px 16px;
+  background: #ffffff94;
+  color: var(--ink);
+  font-size: 15px;
+  font-weight: 600;
+  box-shadow: var(--glass-edge), var(--glass-depth);
+  transition:
+    background 0.25s,
+    transform 0.25s;
+}
+.discovery-axes > button.selected {
+  background: linear-gradient(130deg, #fff, #e1ecdd);
+  border-color: #a8c5ad;
+}
+.discovery-axes > button:first-child.selected {
+  background: linear-gradient(130deg, #fff, #e2ecf4);
+  border-color: #a9bdca;
+}
+.discovery-axes > button:active {
+  transform: scale(0.98);
+}
+.discovery-axes > button:focus-visible,
+.participation-role:has(input:focus-visible) {
+  outline: 3px solid #4e8568;
+  outline-offset: 3px;
+}
+.axis-filter-panel {
+  margin: 20px 0;
+  padding-top: 18px;
+  border-top: 1px solid var(--line);
+}
+.axis-help {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 13px;
+  color: var(--muted);
+  margin: 12px 0;
+}
+.participation-role-options {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 12px;
+  margin: 22px 0;
+}
+.participation-role {
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  min-height: 74px;
+  padding: 16px;
+  border: 1px solid #dce5da;
+  border-radius: 22px;
+  background: #ffffffb3;
+  font-size: 14px;
+  font-weight: 600;
+  transition:
+    background 0.2s,
+    border-color 0.2s;
+}
+.participation-role > input {
+  width: 18px;
+  height: 18px;
+  flex-shrink: 0;
+}
+.participation-role > span {
+  flex: 1;
+}
+.participation-role > svg {
+  flex-shrink: 0;
+}
+.participation-role.selected {
+  border-color: #9ebaa7;
+  background: linear-gradient(145deg, #fff, #e8f0e3);
+  box-shadow: var(--glass-edge);
+}
+.participation-fields {
+  min-width: 0;
+  padding: 22px;
+  margin: 24px 0 0;
+  border: 1px solid #dce5db;
+  border-radius: 24px;
+  background: #ffffff75;
+}
+.participation-fields > legend {
+  padding: 0 10px;
+  font-size: 16px;
+  font-weight: 650;
+}
+.participation-fields .field {
+  margin-top: 18px;
+}
+.participation-fields > .field:first-of-type {
+  margin-top: 4px;
+}
+.participation-fields .muted {
+  font-size: 13px;
+  line-height: 1.8;
+  margin-block: 10px;
+}
+.study-stage {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 10px;
+  background: #eff4e9;
+  padding: 8px;
+  border-radius: 22px;
+  margin: 15px 0;
+  touch-action: pan-y;
+}
+.study-stage > span {
+  font-size: 14px;
+  font-weight: 600;
+  text-align: center;
+}
+.study-stage .icon-button {
+  width: 44px;
+  height: 44px;
+  flex-shrink: 0;
+}
+.destination-entry {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+.destination-entry .region-picker {
+  flex: 1;
+  min-width: 0;
+}
+.destination-entry > button {
+  flex-shrink: 0;
+  margin-top: 20px;
+}
+.study-experience-entry {
+  margin: 20px 0;
+  padding: 22px;
+  border-radius: 22px;
+  background: #f2f6f9b8;
+  border: 1px solid #dae4ea;
+}
+.experience-entry-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+}
+.experience-entry-head h3 {
+  font-size: 16px;
+}
+.experience-years {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 14px;
+}
+.participation-badges {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 7px;
+}
+.participation-badges > span {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 12px;
+  padding: 6px 9px;
+  border-radius: 11px;
+  background: #edf2e6;
+  color: #3f5e48;
+}
+.participation-badges .alumni-badge {
+  background: #e9f0f5;
+  color: #405c70;
+}
+.participation-summary {
+  display: grid;
+  gap: 14px;
+  margin: 22px 0;
+}
+.participation-summary.compact {
+  gap: 10px;
+  margin: 0;
+}
+.experience-summary {
+  display: grid;
+  gap: 6px;
+  padding: 15px;
+  border: 1px solid #dce7ec;
+  border-radius: 18px;
+  background: #f2f6f9;
+}
+.experience-summary strong {
+  font-size: 14px;
+  line-height: 1.7;
+}
+.experience-summary > span,
+.participation-summary > small {
+  color: var(--muted);
+  font-size: 12px;
+}
+.study-topic-tags {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+.study-topic-tags a {
+  font-size: 12px;
+  min-height: 44px;
+  display: inline-flex;
+  align-items: center;
+  padding: 6px 10px;
+  border-radius: 10px;
+  background: #ffffffc9;
+  color: #405c70;
+}
+.local-profile-detail {
+  border-top: 1px solid var(--line);
+  padding-top: 20px;
+}
+.local-profile-detail h2 {
+  font-size: 17px;
+  margin-bottom: 10px;
+}
+.local-profile-detail p {
+  font-size: 14px;
+  line-height: 1.8;
+  color: var(--muted);
+  margin-top: 6px;
+  overflow-wrap: anywhere;
+}
+@media (hover: hover) and (pointer: fine) {
+  .home-axis-card:hover {
+    translate: 0 -4px;
+  }
+}
+@media (max-width: 1100px) {
+  .participation-role-options {
+    grid-template-columns: 1fr;
+  }
+  .participation-role {
+    min-height: 62px;
+  }
+}
+@media (max-width: 760px) {
+  .home-axis-grid {
+    grid-template-columns: 1fr;
+    gap: 12px;
+  }
+  .home-axis-card {
+    padding: 20px;
+    gap: 14px;
+    border-radius: 25px;
+  }
+  .home-axis-card h2 {
+    font-size: 18px;
+  }
+  .home-axis-card p {
+    font-size: 12px;
+  }
+  .axis-symbol {
+    width: 48px;
+    height: 54px;
+    border-radius: 17px;
+  }
+  .discovery-axes {
+    gap: 8px;
+  }
+  .discovery-axes > button {
+    flex-wrap: wrap;
+    gap: 7px;
+    min-height: 64px;
+    padding: 10px;
+    border-radius: 20px;
+    font-size: 13px;
+  }
+  .participation-fields {
+    padding: 17px;
+  }
+  .study-experience-entry {
+    padding: 16px;
+  }
+  .experience-years {
+    grid-template-columns: 1fr;
+    gap: 0;
+  }
+  .participation-fields .form-row {
+    grid-template-columns: 1fr;
+  }
+  .destination-entry {
+    align-items: start;
+  }
+  .destination-entry > button {
+    margin-top: 40px;
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .home-axis-card:hover {
+    translate: none;
+  }
+}

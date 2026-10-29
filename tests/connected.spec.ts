@@ -1,5 +1,104 @@
 import { openPeopleFilters } from "./helpers";
 import { test, expect } from "@playwright/test";
+
+test("実API：立場別に入力し、留学経験と現地生の両方で同じ相手を見つける", async ({
+  page,
+  context,
+}) => {
+  await context.addCookies([
+    {
+      name: "machi_session",
+      value: "e2e-dualui",
+      domain: "127.0.0.1",
+      path: "/",
+    },
+  ]);
+  await page.goto("/profile");
+  const editor = page.locator(".participation-editor");
+  await editor.getByLabel("留学を考える・準備する", { exact: true }).check();
+  await editor
+    .getByRole("combobox", { name: "留学の検討状況", exact: true })
+    .selectOption("comparing");
+  await editor
+    .getByRole("button", { name: "国・留学先選び", exact: true })
+    .click();
+  await editor.getByLabel("留学経験を伝える", { exact: true }).check();
+  await editor
+    .getByRole("button", { name: "留学経験を追加", exact: true })
+    .click();
+  await editor
+    .getByRole("combobox", { name: "留学経験 1の国・地域", exact: true })
+    .selectOption("country:CA");
+  await editor.getByLabel("留学経験 1の開始年", { exact: true }).fill("2022");
+  await editor.getByLabel("留学経験 1の帰国年", { exact: true }).fill("2023");
+  await editor
+    .getByRole("group", { name: "留学経験を伝えられる人", exact: true })
+    .getByRole("button", { name: "学校生活", exact: true })
+    .click();
+  await editor.getByLabel("現地で交流する", { exact: true }).check();
+  await editor
+    .getByRole("combobox", { name: "現地での立場", exact: true })
+    .selectOption("student");
+  await editor
+    .getByRole("combobox", { name: "交流できる地域の国・地域", exact: true })
+    .selectOption("country:JP");
+  await editor
+    .getByRole("combobox", { name: "交流できる地域の街（任意）", exact: true })
+    .selectOption("city:JP:tokyo");
+  await editor.getByLabel("話せる言語", { exact: true }).fill("日本語・英語");
+  await editor
+    .getByLabel("現地で交流したいこと", { exact: true })
+    .fill("学生生活と街歩き");
+  await page.getByLabel("新しい1対1の会話を受け付ける").check();
+  await page.getByRole("button", { name: "変更を保存", exact: true }).click();
+  await expect(page.getByRole("status")).toContainText("保存しました");
+  await page.reload();
+  await expect(
+    editor.getByLabel("留学経験 1の帰国年", { exact: true }),
+  ).toHaveValue("2023");
+  await expect(
+    editor.getByRole("combobox", { name: "現地での立場", exact: true }),
+  ).toHaveValue("student");
+  await context.addCookies([
+    {
+      name: "machi_session",
+      value: "e2e-dualviewer",
+      domain: "127.0.0.1",
+      path: "/",
+    },
+  ]);
+  await page.goto("/people?axis=alumni&topic=学校生活&studyPlace=country%3ACA");
+  await expect(page.locator(".person-card")).toHaveCount(1);
+  await page.locator(".person-identity").click();
+  await expect(page.locator(".member-profile")).toContainText(
+    "留学経験は本人の申告です",
+  );
+  await expect(page.locator(".member-profile")).toContainText("現地の学生");
+  await page.goto(
+    "/people?axis=local&studyPlace=country%3AJP&localKind=student",
+  );
+  await expect(page.locator(".person-card")).toHaveCount(1);
+  await expect(page.locator(".person-card")).toContainText(
+    "留学経験と現地交流のテストさん",
+  );
+  await page
+    .getByRole("button", {
+      name: "留学経験と現地交流のテストさん メッセージ",
+      exact: true,
+    })
+    .click();
+  await expect(page.locator(".chat-header h1")).toHaveText(
+    "留学経験と現地交流のテストさん",
+  );
+  await page
+    .getByRole("textbox", { name: "メッセージ", exact: true })
+    .fill("留学経験と今の学生生活について聞きたいです");
+  await page
+    .getByRole("button", { name: "メッセージを送信", exact: true })
+    .click();
+  await page.reload();
+  await expect(page.locator(".message.own")).toContainText("今の学生生活");
+});
 // Only the local preview FLAG is changed. Authentication, profiles, room membership,
 // messages, reservations and consultations all use the real local Worker and D1.
 // Let intercepted responses finish before Playwright disposes the request context.

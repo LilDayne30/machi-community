@@ -1,4 +1,5 @@
 import { test, expect } from "@playwright/test";
+import { emptyParticipation } from "../src/lib/participation";
 const adminURL = "http://127.0.0.1:8788/api/admin";
 const adminAuth = (u: string) => ({
   Origin: "http://127.0.0.1:5174",
@@ -8,6 +9,143 @@ const origin = { Origin: "http://127.0.0.1:5173" };
 const auth = (user: string) => ({
   ...origin,
   Cookie: "machi_session=e2e-" + user,
+});
+test("2軸プロフィール：D1保存・非選択項目の非公開・旧クライアントとの互換", async ({
+  request,
+}) => {
+  const bootstrap = async (user: string) =>
+    (await request.get("/api/bootstrap", { headers: auth(user) })).json();
+  const initial = await bootstrap("dual");
+  const participation = {
+    ...emptyParticipation(["explorer", "alumni", "local"]),
+    stage: "comparing",
+    questions: ["国・留学先選び"],
+    experiences: [
+      {
+        regionId: "country:CA",
+        level: "high_school",
+        format: "exchange",
+        startYear: 2022,
+        endYear: 2023,
+        months: 10,
+        topics: ["学校生活"],
+      },
+    ],
+    local: {
+      kind: "student",
+      regionId: "city:JP:tokyo",
+      languages: "日本語・英語",
+      topics: "学食",
+    },
+  };
+  const profile = { ...initial.profile, acceptsMessages: true, participation };
+  expect(
+    (
+      await request.put("/api/profile", {
+        headers: auth("dual"),
+        data: profile,
+      })
+    ).ok(),
+  ).toBe(true);
+  expect((await bootstrap("dual")).profile.participation).toEqual(
+    participation,
+  );
+  let visible = (await bootstrap("dualviewer")).people.find(
+    (p: any) => p.id === "e2e-dual",
+  );
+  expect(visible.participation).toEqual(participation);
+  const start = await request.post("/api/conversations", {
+    headers: auth("dualviewer"),
+    data: { personId: "e2e-dual" },
+  });
+  expect(start.ok()).toBe(true);
+  const roomId = (await start.json()).id;
+  const hiddenDraft = participation.experiences.map((e) => ({
+    ...e,
+    endYear: 2021,
+  }));
+  expect(
+    (
+      await request.put("/api/profile", {
+        headers: auth("dual"),
+        data: {
+          ...profile,
+          participation: {
+            ...participation,
+            roles: ["explorer"],
+            experiences: hiddenDraft,
+          },
+        },
+      })
+    ).ok(),
+  ).toBe(true);
+  const viewer = await bootstrap("dualviewer");
+  visible = viewer.people.find((p: any) => p.id === "e2e-dual");
+  expect(visible.participation.experiences).toEqual([]);
+  expect(visible.participation.local.languages).toBe("");
+  const peer = viewer.rooms.find((r: any) => r.id === roomId).peer;
+  expect(peer.participation.experiences).toEqual([]);
+  expect(peer.participation.local.topics).toBe("");
+  const own = (await bootstrap("dual")).profile;
+  expect(own.participation.experiences).toEqual(hiddenDraft);
+  expect(own.participation.local).toEqual(participation.local);
+  const { participation: omitted, ...legacy } = own;
+  expect(
+    (
+      await request.put("/api/profile", { headers: auth("dual"), data: legacy })
+    ).ok(),
+  ).toBe(true);
+  expect((await bootstrap("dual")).profile.participation).toEqual(
+    own.participation,
+  );
+  expect(
+    (
+      await request.put("/api/profile", {
+        headers: auth("dual"),
+        data: { ...own, acceptsMessages: false },
+      })
+    ).ok(),
+  ).toBe(true);
+  expect(
+    (await bootstrap("dualviewer")).people.some(
+      (p: any) => p.id === "e2e-dual",
+    ),
+  ).toBe(false);
+  expect(
+    (await bootstrap("dualviewer")).rooms.some((r: any) => r.id === roomId),
+  ).toBe(true);
+});
+
+test("2軸プロフィール：不正な経験・偽の認証属性は保存されない", async ({
+  request,
+}) => {
+  const initial = await (
+    await request.get("/api/bootstrap", { headers: auth("dual") })
+  ).json();
+  const p = initial.profile.participation;
+  for (const participation of [
+    { ...p, roles: [] },
+    { ...p, roles: ["alumni"], experiences: [] },
+    {
+      ...p,
+      roles: ["alumni"],
+      experiences: [{ ...p.experiences[0], endYear: 1900 }],
+    },
+    { ...p, verified: true },
+    { ...p, local: { ...p.local, verified: true } },
+  ])
+    expect(
+      (
+        await request.put("/api/profile", {
+          headers: auth("dual"),
+          data: { ...initial.profile, participation },
+        })
+      ).status(),
+    ).toBe(400);
+  const saved = await (
+    await request.get("/api/bootstrap", { headers: auth("dual") })
+  ).json();
+  expect(saved.profile.participation).toEqual(p);
 });
 test("未ログインの投稿・予約・相談・管理を拒否", async ({ request }) => {
   for (const [path, body] of [

@@ -1,3 +1,5 @@
+import { participationSchema } from "./participation";
+import { publicParticipation } from "../src/lib/participation";
 import { Hono } from "hono";
 import { readOAuthTransaction } from "./auth";
 import { getCookie, setCookie, deleteCookie } from "hono/cookie";
@@ -80,6 +82,9 @@ function publicMember(
   };
   return {
     id: user.id,
+    participation: p.participation
+      ? publicParticipation(p.participation)
+      : undefined,
     name: user.name,
     bio: p.bio,
     relation: p.relation,
@@ -582,6 +587,7 @@ app.put("/api/profile", async (c) => {
       c,
       z.object({
         name: z.string().trim().min(1).max(40),
+        participation: participationSchema.optional(),
         nationality: z.string().trim().min(1, "国籍を入力してください").max(60),
         city: z.string().trim().max(80).default(""),
         visitRegionId: z
@@ -636,6 +642,12 @@ app.put("/api/profile", async (c) => {
       }),
     );
   const { connections, ...profile } = p;
+  if (profile.participation === undefined) {
+    profile.participation = parseJSON<Partial<typeof emptyProfile>>(
+      u.profile,
+      {},
+    ).participation;
+  }
   const current = (
     connections ?? parseJSON<RegionConnection[]>(u.connections || "[]", [])
   ).find((c) => c.status === "current");

@@ -2,6 +2,153 @@ import { openPeopleFilters } from "./helpers";
 import { test, expect } from "@playwright/test";
 import AxeBuilder from "@axe-core/playwright";
 import { emptyProfile } from "../src/lib/data";
+
+test("2つの入口：希望国未定の経験者相談と現地生の交流を切り替える", async ({
+  page,
+}) => {
+  await page.getByRole("link", { name: /留学経験者に相談 国が未定/ }).click();
+  await expect(page).toHaveURL(/axis=alumni/);
+  await expect(page.locator(".person-card")).toHaveCount(2);
+  await page
+    .getByRole("combobox", { name: "相談したいこと", exact: true })
+    .selectOption("ホストファミリー");
+  await expect(page.locator(".person-card")).toHaveCount(1);
+  await expect(page.locator(".person-card")).toContainText("美咲");
+  await page
+    .getByRole("combobox", { name: "留学経験の国・地域", exact: true })
+    .selectOption("country:CA");
+  await expect(page.locator(".person-card")).toContainText("カナダ");
+  await page
+    .getByRole("button", { name: "絞り込みを解除", exact: true })
+    .click();
+  await expect(page).toHaveURL(/axis=alumni/);
+  await expect(page.locator(".person-card")).toHaveCount(2);
+  await page
+    .getByRole("button", { name: "現地の人と交流", exact: true })
+    .click();
+  await page
+    .getByRole("combobox", { name: "交流する相手", exact: true })
+    .selectOption("student");
+  await page
+    .getByRole("combobox", { name: "交流したい国・地域", exact: true })
+    .selectOption("country:JP");
+  await expect(page.locator(".person-card")).toHaveCount(1);
+  await expect(page.locator(".person-card")).toContainText("悠太");
+  await page.locator(".person-card .person-identity").click();
+  await expect(page.locator(".member-profile")).toContainText("現地の学生");
+  await expect(page.locator(".local-profile-detail")).toContainText("東京");
+  expect(
+    await page.evaluate(() => document.documentElement.scrollWidth),
+  ).toBeLessThanOrEqual(page.viewportSize()!.width);
+});
+
+test("立場別プロフィール：国未定でも保存でき、複数の立場と非表示の入力を保持する", async ({
+  page,
+}) => {
+  await page.goto("/profile");
+  const editor = page.locator(".participation-editor");
+  await editor.getByLabel("留学を考える・準備する", { exact: true }).check();
+  await editor.getByLabel("現地で交流する", { exact: true }).uncheck();
+  await editor.getByRole("button", { name: "次の検討状況" }).click();
+  await expect(
+    editor.getByRole("combobox", { name: "留学の検討状況", exact: true }),
+  ).toHaveValue("comparing");
+  await editor.locator(".study-stage").evaluate((el) => {
+    el.dispatchEvent(
+      new TouchEvent("touchstart", {
+        touches: [
+          new Touch({ identifier: 1, target: el, clientX: 270, clientY: 100 }),
+        ],
+        bubbles: true,
+      }),
+    );
+    el.dispatchEvent(
+      new TouchEvent("touchend", {
+        changedTouches: [
+          new Touch({ identifier: 1, target: el, clientX: 100, clientY: 100 }),
+        ],
+        bubbles: true,
+      }),
+    );
+  });
+  await expect(
+    editor.getByRole("combobox", { name: "留学の検討状況", exact: true }),
+  ).toHaveValue("preparing");
+  await editor.getByRole("button", { name: "前の検討状況" }).click();
+  await page.getByLabel("新しい1対1の会話を受け付ける").check();
+  await expect(
+    editor.getByLabel("留学を考える・準備する", { exact: true }),
+  ).toBeChecked();
+  await expect(
+    editor.getByLabel("現地で交流する", { exact: true }),
+  ).not.toBeChecked();
+  await editor
+    .getByRole("button", { name: "国・留学先選び", exact: true })
+    .click();
+  await page.getByRole("button", { name: "変更を保存", exact: true }).click();
+  await expect(page.getByRole("status")).toContainText("保存しました");
+  await page.reload();
+  await expect(
+    editor.getByRole("combobox", { name: "留学の検討状況", exact: true }),
+  ).toHaveValue("comparing");
+  await expect(
+    editor.getByText("国が未定でも、知りたいテーマから経験者を探せます。"),
+  ).toBeVisible();
+  await editor.getByLabel("留学経験を伝える", { exact: true }).check();
+  await editor
+    .getByRole("button", { name: "留学経験を追加", exact: true })
+    .click();
+  await editor
+    .getByRole("combobox", { name: "留学経験 1の国・地域", exact: true })
+    .selectOption("country:CA");
+  await editor.getByLabel("留学経験 1の開始年", { exact: true }).fill("2022");
+  await editor.getByLabel("留学経験 1の帰国年", { exact: true }).fill("2023");
+  await editor.getByLabel("現地で交流する", { exact: true }).check();
+  await editor
+    .getByRole("combobox", { name: "現地での立場", exact: true })
+    .selectOption("student");
+  await editor
+    .getByRole("combobox", { name: "交流できる地域の国・地域", exact: true })
+    .selectOption("country:JP");
+  await editor.getByLabel("話せる言語", { exact: true }).fill("日本語・英語");
+  await page.getByRole("button", { name: "変更を保存", exact: true }).click();
+  await expect(page.getByRole("status")).toContainText("保存しました");
+  await page.reload();
+  await expect(
+    editor.getByLabel("留学経験 1の帰国年", { exact: true }),
+  ).toHaveValue("2023");
+  await editor.getByLabel("留学経験 1の帰国年", { exact: true }).fill("2021");
+  await editor.getByLabel("留学経験を伝える", { exact: true }).uncheck();
+  await editor.getByLabel("現地で交流する", { exact: true }).uncheck();
+  await expect(
+    editor.getByLabel("留学経験 1の帰国年", { exact: true }),
+  ).toHaveCount(0);
+  await expect(editor.getByLabel("話せる言語", { exact: true })).toHaveCount(0);
+  await page.getByRole("button", { name: "変更を保存", exact: true }).click();
+  await expect(page.getByRole("status")).toContainText("保存しました");
+  await page.reload();
+  await editor.getByLabel("留学経験を伝える", { exact: true }).check();
+  await editor.getByLabel("現地で交流する", { exact: true }).check();
+  await expect(
+    editor.getByLabel("留学経験 1の帰国年", { exact: true }),
+  ).toHaveValue("2021");
+  await expect(editor.getByLabel("話せる言語", { exact: true })).toHaveValue(
+    "日本語・英語",
+  );
+  await page.getByRole("button", { name: "変更を保存", exact: true }).click();
+  await expect(page.getByRole("status")).toContainText("帰国年は開始年以降");
+  await editor.getByLabel("留学経験 1の帰国年", { exact: true }).fill("2023");
+  await page.getByRole("button", { name: "変更を保存", exact: true }).click();
+  await expect(page.getByRole("status")).toContainText("保存しました");
+  expect(
+    await page.evaluate(() => document.documentElement.scrollWidth),
+  ).toBeLessThanOrEqual(page.viewportSize()!.width);
+  const accessibility = await new AxeBuilder({ page })
+    .include(".participation-editor")
+    .withTags(["wcag2a", "wcag2aa"])
+    .analyze();
+  expect(accessibility.violations).toEqual([]);
+});
 // Let intercepted responses finish before Playwright disposes the request context.
 test.afterEach(async ({ page }) => {
   await page.unrouteAll({ behavior: "wait" });

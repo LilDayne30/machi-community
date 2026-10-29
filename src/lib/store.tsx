@@ -36,6 +36,7 @@ function upgradeMember(person: CommunityMember): CommunityMember {
   const seed = sample.people.find((p) => p.id === person.id);
   return {
     ...person,
+    participation: person.participation ?? seed?.participation,
     nationality: person.nationality ?? seed?.nationality ?? "",
     city: !person.connections && seed ? seed.city : (person.city ?? ""),
     bio: !person.connections && seed ? seed.bio : person.bio,

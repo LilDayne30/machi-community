@@ -10,6 +10,18 @@ import {
   useSearchParams,
 } from "react-router-dom";
 import { AnimatePresence, motion } from "motion/react";
+import {
+  DiscoveryAxes,
+  ParticipationEditor,
+  ParticipationSummary,
+} from "./components/participation";
+import {
+  localKinds,
+  matchesParticipation,
+  participationError,
+  participationOf,
+  studyTopics,
+} from "./lib/participation";
 import { useGlassEffects } from "./components/useGlassEffects";
 import {
   ArrowDown,
@@ -445,6 +457,28 @@ function Home() {
           <span>メモを検索</span>
         </button>
       </Heading>
+      <div className="home-axis-grid" aria-label="留学と現地交流の2つの入口">
+        <Link className="home-axis-card glass" to="/people?axis=alumni">
+          <span className="axis-symbol">
+            <GraduationCap size={28} />
+          </span>
+          <div>
+            <h2>留学経験者に相談</h2>
+            <p>国が未定でも、知りたいことから探せます</p>
+          </div>
+          <ArrowUpRight size={20} />
+        </Link>
+        <Link className="home-axis-card glass" to="/people?axis=local">
+          <span className="axis-symbol">
+            <Globe2 size={28} />
+          </span>
+          <div>
+            <h2>現地の人と交流</h2>
+            <p>現地の学生・留学中の人・住民と話せます</p>
+          </div>
+          <ArrowUpRight size={20} />
+        </Link>
+      </div>
       <div className="home-actions" aria-label="よく使う機能">
         <Link to="/rooms" className="home-action glass">
           <span className="action-icon">
@@ -1345,6 +1379,7 @@ function MemberCard({
           {person.city && " · " + person.city}
         </span>
       </div>
+      <ParticipationSummary person={person} compact />
       <ResidenceLinks connections={person.connections} compact />
       <div className="person-interests">
         {person.interests.map((interest) => (
@@ -1389,6 +1424,10 @@ function Members() {
     [theme, setTheme] = useState("すべて"),
     [showFilters, setShowFilters] = useState(false),
     [params, setParams] = useSearchParams();
+  const axis = params.get("axis") || "",
+    studyTopic = params.get("topic") || "",
+    studyPlace = params.get("studyPlace") || "",
+    localKind = params.get("localKind") || "";
   const nationality = params.get("nationality") || "",
     region = params.get("region") || "",
     place = params.get("place") || "",
@@ -1427,8 +1466,10 @@ function Members() {
       return next;
     });
   }
-  const list = data.people.filter((p) =>
-    matchesMember(p, query, nationality, region, theme, place, status),
+  const list = data.people.filter(
+    (p) =>
+      matchesMember(p, query, nationality, region, theme, place, status) &&
+      matchesParticipation(p, axis, studyTopic, studyPlace, localKind),
   );
   return (
     <>
@@ -1438,14 +1479,28 @@ function Members() {
           1対1の会話
         </span>
       </Heading>
+      <DiscoveryAxes
+        axis={axis}
+        onChange={(next) => {
+          setParams(next ? { axis: next } : {});
+          setQuery("");
+          setTheme("すべて");
+        }}
+      />
       <div className="people-tools glass">
         <div className="people-query-row">
           <label className="field">
-            名前・街・話したいこと
+            {axis === "alumni"
+              ? "名前・留学経験・相談テーマ"
+              : "名前・街・話したいこと"}
             <input
               type="search"
               value={query}
-              placeholder="台北、京都、喫茶店…"
+              placeholder={
+                axis === "alumni"
+                  ? "高校留学、学校生活、カナダ…"
+                  : "台北、京都、喫茶店…"
+              }
               onChange={(e) => setQuery(e.target.value)}
             />
           </label>
@@ -1553,7 +1608,7 @@ function Members() {
             )}
           </AnimatePresence>
         </div>
-        {data.profile.interestedRegions.length > 0 && (
+        {axis !== "alumni" && data.profile.interestedRegions.length > 0 && (
           <div className="my-region-filters">
             <span>あなたの興味から探す</span>
             <div className="filter-row">
@@ -1569,8 +1624,67 @@ function Members() {
             </div>
           </div>
         )}
+        {axis && (
+          <div className="form-row axis-filter-panel">
+            <label className="field">
+              {axis === "alumni" ? "留学経験の国・地域" : "交流したい国・地域"}
+              <select
+                value={studyPlace}
+                onChange={(e) => filter("studyPlace", e.target.value)}
+              >
+                <option value="">国は未定・すべて</option>
+                {regionCatalog
+                  .filter((r) => r.kind === "country")
+                  .sort((a, b) => a.name.localeCompare(b.name, "ja"))
+                  .map((r) => (
+                    <option value={r.id} key={r.id}>
+                      {r.name}
+                    </option>
+                  ))}
+              </select>
+            </label>
+            {axis === "alumni" ? (
+              <label className="field">
+                相談したいこと
+                <select
+                  value={studyTopic}
+                  onChange={(e) => filter("topic", e.target.value)}
+                >
+                  <option value="">すべての相談テーマ</option>
+                  {studyTopics.map((t) => (
+                    <option key={t}>{t}</option>
+                  ))}
+                </select>
+              </label>
+            ) : (
+              <label className="field">
+                交流する相手
+                <select
+                  value={localKind}
+                  onChange={(e) => filter("localKind", e.target.value)}
+                >
+                  <option value="">現地の人すべて</option>
+                  {Object.entries(localKinds).map(([v, l]) => (
+                    <option value={v} key={v}>
+                      {l}
+                    </option>
+                  ))}
+                </select>
+              </label>
+            )}
+          </div>
+        )}
+        {axis === "alumni" && (
+          <p className="axis-help">
+            <GraduationCap size={16} />
+            留学した場所で探せます。経験は本人の申告です。
+          </p>
+        )}
         <div className="filter-row">
-          {["すべて", "喫茶店", "街歩き", "古本屋", "写真", "留学"].map((s) => (
+          {(axis === "alumni"
+            ? []
+            : ["すべて", "喫茶店", "街歩き", "古本屋", "写真", "留学"]
+          ).map((s) => (
             <CheckChip
               key={s}
               selected={theme === s}
@@ -1587,12 +1701,15 @@ function Members() {
             region ||
             place ||
             status ||
-            theme !== "すべて") && (
+            theme !== "すべて" ||
+            studyTopic ||
+            studyPlace ||
+            localKind) && (
             <button
               onClick={() => {
                 setQuery("");
                 setTheme("すべて");
-                setParams({});
+                setParams(axis ? { axis } : {});
               }}
             >
               絞り込みを解除
@@ -1681,6 +1798,7 @@ function MemberDetail() {
             <span key={s}>{s}</span>
           ))}
         </div>
+        <ParticipationSummary person={person} />
         <section className="member-regions">
           <h2>地域との関わり</h2>
           {person.connections.length ? (
@@ -2797,6 +2915,12 @@ function ProfilePage() {
       toast("国籍を入力してください");
       return;
     }
+    const participationMessage =
+      p.participation && participationError(p.participation);
+    if (participationMessage) {
+      toast(participationMessage);
+      return;
+    }
     const residenceError = connectionError(p.connections);
     if (residenceError) {
       toast(residenceError);
@@ -2813,6 +2937,7 @@ function ProfilePage() {
     try {
       let next = {
         ...p,
+        participation: p.participation || participationOf(p),
         nationality: p.nationality.trim(),
         city: p.city.trim(),
         interestedRegions,
@@ -2936,6 +3061,11 @@ function ProfilePage() {
       <nav className="profile-section-nav" aria-label="プロフィールの項目">
         {[
           { id: "profile-basic", label: "基本情報", icon: Camera },
+          {
+            id: "profile-participation",
+            label: "参加する立場",
+            icon: GraduationCap,
+          },
           { id: "profile-residence", label: "居住・滞在", icon: MapPin },
           { id: "profile-interests", label: "興味", icon: Coffee },
           { id: "profile-visit", label: "訪問予定", icon: CalendarDays },
@@ -3057,6 +3187,11 @@ function ProfilePage() {
             </label>
           </div>
         </section>
+        <ParticipationEditor
+          value={p.participation}
+          acceptsMessages={p.acceptsMessages}
+          onChange={(participation) => setP({ ...p, participation })}
+        />
         <section
           className="profile-section glass"
           id="profile-residence"
@@ -3221,13 +3356,17 @@ function ProfilePage() {
               type="checkbox"
               checked={!!p.acceptsMessages}
               onChange={(e) =>
-                setP({ ...p, acceptsMessages: e.target.checked })
+                setP({
+                  ...p,
+                  participation: p.participation || participationOf(p),
+                  acceptsMessages: e.target.checked,
+                })
               }
             />
             <span>
               <strong>新しい1対1の会話を受け付ける</strong>
               <small>
-                オンにすると、国籍・居住／滞在歴・興味のある国や地域・写真を含むプロフィールが会員の「話せる人」に表示されます。オフにしても、始めた会話は続けられます。
+                オンにすると、基本情報・居住／滞在歴・写真と、選択した立場の留学経験や交流情報が会員の「話せる人」に表示されます。選択を外した立場の情報は非公開です。オフにしても、始めた会話は続けられます。
               </small>
             </span>
           </label>

@@ -1,3 +1,4 @@
+import { participationSearch } from "./participation";
 import type { CommunityMember } from "./data";
 import { connectionSearch, withinRegion } from "./regions";
 export const MAX_AVATAR_BYTES = 192 * 1024;
@@ -36,6 +37,7 @@ export function matchesMember(
           ...person.interestedRegions,
           ...person.interests,
           ...person.connections.map(connectionSearch),
+          participationSearch(person),
         ].join(" "),
       ).includes(search)) &&
     (!nationality ||
