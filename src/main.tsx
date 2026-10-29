@@ -8,6 +8,7 @@ import "./styles.css";
 import "./liquid.css";
 import "./motion.css";
 import "./participation.css";
+import "./events.css";
 ReactDOM.createRoot(document.getElementById("root")!).render(
   <React.StrictMode>
     <BrowserRouter>

@@ -165,7 +165,7 @@ test("ホーム・画像・レスポンシブ・主要画面の2タップ導線"
   const errors: string[] = [];
   page.on("pageerror", (e) => errors.push(e.message));
   await expect(page.locator(".home-discovery")).toBeVisible();
-  await expect(page.locator(".talk-card")).toHaveCount(1);
+  await expect(page.locator(".event-home-preview .event-card")).toHaveCount(2);
   expect(
     await page.evaluate(() => document.documentElement.scrollWidth),
   ).toBeLessThanOrEqual(page.viewportSize()!.width);
@@ -226,39 +226,126 @@ test("現地メモのテーマ絞り込み・検索・保存", async ({ page }) 
     page.getByRole("button", { name: "メモを保存" }),
   ).toHaveAttribute("aria-pressed", "true");
 });
-test("トーク申込み・重複防止・リロード保持・キャンセル", async ({ page }) => {
-  await page.locator(".talk-card").click();
-  await page.getByRole("button", { name: "参加を申し込む" }).click();
+test("イベント雛形：一覧から詳細へ進み、予約せず端末に保存できる", async ({
+  page,
+}) => {
+  const mutations: string[] = [];
+  page.on("request", (r) => {
+    if (r.url().includes("/api/") && r.method() !== "GET")
+      mutations.push(r.url());
+  });
+  await page.locator(".event-home-preview .event-card-link").first().click();
   await expect(
-    page.getByRole("button", { name: "参加を確定する" }),
-  ).toBeDisabled();
-  await page.getByLabel("開催日時・料金・キャンセル条件を確認しました").check();
-  await page.getByRole("button", { name: "参加を確定する" }).click();
-  await expect(
-    page.getByRole("dialog", { name: "参加が確定しました" }),
+    page.getByRole("heading", {
+      name: "高校留学の学校生活と、最初の友達づくり",
+      exact: true,
+    }),
   ).toBeVisible();
-  await page.getByRole("button", { name: "トーク詳細へ" }).click();
-  await expect(page.locator(".booking-confirmed")).toHaveText("参加確定");
+  await expect(
+    page.getByRole("button", { name: "募集開始前です", exact: true }),
+  ).toBeDisabled();
   await expect(
     page.getByRole("button", { name: "参加を申し込む" }),
   ).toHaveCount(0);
+  await expect(page.locator(".event-attendance")).toContainText("企画サンプル");
+  await expect(page.locator(".event-attendance-facts")).toContainText("未定");
+  await page.getByRole("button", { name: /イベント.*保存/ }).click();
+  await expect(page.getByRole("status")).toContainText(
+    "この端末に保存しました",
+  );
   await page.reload();
-  await page.getByRole("button", { name: "申込みをキャンセル" }).click();
-  await page.getByRole("button", { name: "キャンセルを確定" }).click();
   await expect(
-    page.getByRole("button", { name: "参加を申し込む" }),
+    page.getByRole("button", { name: /イベント.*保存/ }),
+  ).toHaveAttribute("aria-pressed", "true");
+  await page.getByRole("link", { name: "イベント一覧", exact: true }).click();
+  await page.getByRole("button", { name: /^保存済み/ }).click();
+  await expect(page.locator(".event-card")).toHaveCount(1);
+  await page.reload();
+  await expect(page.locator(".event-card")).toHaveCount(1);
+  await page.locator(".event-card-link").click();
+  await page.getByRole("button", { name: /イベント.*保存/ }).click();
+  await expect(
+    page.getByRole("button", { name: /イベント.*保存/ }),
+  ).toHaveAttribute("aria-pressed", "false");
+  expect(mutations).toEqual([]);
+});
+test("イベントの目的・形式・検索を組み合わせ、空状態から条件を解除できる", async ({
+  page,
+}) => {
+  await page.getByRole("link", { name: "イベントを開く", exact: true }).click();
+  await expect(
+    page.getByRole("heading", { name: "イベント", exact: true }),
   ).toBeVisible();
+  await expect(page.locator(".event-card")).toHaveCount(4);
+  await expect(page.locator(".event-card h3").first()).toBeInViewport();
+  await page.getByRole("button", { name: "留学相談", exact: true }).click();
+  await expect(page.locator(".event-card")).toHaveCount(2);
+  await page
+    .getByRole("combobox", { name: "開催形式", exact: true })
+    .selectOption("onsite");
+  await expect(
+    page.getByRole("heading", { name: "条件に合うイベントはありません" }),
+  ).toBeVisible();
+  await page.getByRole("button", { name: "条件を解除", exact: true }).click();
+  await expect(page.locator(".event-card")).toHaveCount(4);
+  await page.getByRole("button", { name: "現地交流", exact: true }).click();
+  await page
+    .getByRole("searchbox", { name: "イベントを検索", exact: true })
+    .fill("台北");
+  await expect(page.locator(".event-card")).toHaveCount(1);
+  await page.reload();
+  await expect(page.locator(".event-card")).toHaveCount(1);
+  await expect(
+    page.getByRole("button", { name: "現地交流", exact: true }),
+  ).toHaveAttribute("aria-pressed", "true");
+  await page.locator(".event-card-link").focus();
+  await expect(page.locator(".event-card-link")).toBeFocused();
+  await page.keyboard.press("Enter");
+  await page.getByRole("link", { name: "話せる人を見る", exact: true }).click();
+  await expect(page).toHaveURL(/axis=local/);
+  await expect(page.locator(".person-card")).toHaveCount(1);
+  await expect(page.locator(".person-card")).toContainText("あかり");
 });
-test("2回目のトーク料金を表示", async ({ page }) => {
-  await page.locator(".talk-card").click();
-  await page.getByRole("button", { name: "参加を申し込む" }).click();
-  await page.getByLabel("開催日時・料金・キャンセル条件を確認しました").check();
-  await page.getByRole("button", { name: "参加を確定する" }).click();
-  await page.getByRole("button", { name: "トーク詳細へ" }).click();
-  await page.goto("/talks/t2");
-  await expect(page.locator(".price")).toHaveText("¥1,000");
+test("イベントの対面表示・保存の空状態・最小幅とアクセシビリティ", async ({
+  page,
+}) => {
+  await page.setViewportSize({ width: 320, height: 740 });
+  await page.goto("/talks?saved=1");
+  await expect(
+    page.getByRole("heading", {
+      name: "保存したイベントはありません",
+      exact: true,
+    }),
+  ).toBeVisible();
+  await page
+    .getByRole("button", { name: "すべてのイベントを見る", exact: true })
+    .click();
+  await page
+    .getByRole("combobox", { name: "開催形式", exact: true })
+    .selectOption("onsite");
+  await expect(page.locator(".event-card")).toHaveCount(1);
+  expect(
+    await page.evaluate(() => document.documentElement.scrollWidth),
+  ).toBeLessThanOrEqual(320);
+  await page.locator(".event-card-link").click();
+  await expect(
+    page.getByRole("heading", {
+      name: "学生と歩く、バンクーバーの休日",
+      exact: true,
+    }),
+  ).toBeVisible();
+  await expect(page.locator(".event-detail-tags")).toContainText("対面");
+  await expect(page.locator(".event-facts")).toContainText("集合場所を調整中");
+  await expect(page.locator(".page-scene")).toHaveCSS("opacity", "1");
+  expect(
+    await page.evaluate(() => document.documentElement.scrollWidth),
+  ).toBeLessThanOrEqual(320);
+  const result = await new AxeBuilder({ page })
+    .withTags(["wcag2a", "wcag2aa", "wcag21a", "wcag21aa"])
+    .analyze();
+  expect(result.violations).toEqual([]);
 });
-test("地域トークの小部屋・投稿・返信・通報", async ({ page }) => {
+test("イベントの小部屋・投稿・返信・通報", async ({ page }) => {
   await page.goto("/rooms/r1");
   await expect(page.locator(".chat-header h1")).toHaveText(
     "京都の喫茶と、街歩き",
@@ -570,7 +657,7 @@ test("新しい個人会話の開始・重複防止・相手ごとの履歴", as
   await expect(page.locator(".message.own")).toHaveCount(1);
   await page.goto("/rooms");
   await expect(page.locator(".conversation-row")).toHaveCount(3);
-  await page.getByRole("tab", { name: /^地域トークの小部屋/ }).click();
+  await page.getByRole("tab", { name: /^イベントの小部屋/ }).click();
   await expect(page.locator(".room-card")).toHaveCount(2);
 });
 test("個人会話をブロックし新しい受付を自分で選べる", async ({ page }) => {
@@ -850,11 +937,9 @@ test("全画面からトーク・プロフィールの項目へ直接移動で�
   page,
 }, info) => {
   await page.goto("/people");
-  await page
-    .getByRole("link", { name: "地域トークと申込み", exact: true })
-    .click();
+  await page.getByRole("link", { name: "イベントを開く", exact: true }).click();
   await expect(
-    page.getByRole("heading", { name: "地域トーク", exact: true }),
+    page.getByRole("heading", { name: "イベント", exact: true }),
   ).toBeVisible();
   await page.goto("/profile");
   await page
@@ -892,12 +977,12 @@ test("会話の検索・未読絞り込み・タブ状態を保持する", async
   await page.getByRole("tab", { name: /1対1/ }).focus();
   await page.keyboard.press("ArrowRight");
   await expect(
-    page.getByRole("tab", { name: /地域トークの小部屋/ }),
+    page.getByRole("tab", { name: /イベントの小部屋/ }),
   ).toHaveAttribute("aria-selected", "true");
   await expect(page).toHaveURL(/tab=group/);
   await page.reload();
   await expect(
-    page.getByRole("tab", { name: /地域トークの小部屋/ }),
+    page.getByRole("tab", { name: /イベントの小部屋/ }),
   ).toHaveAttribute("aria-selected", "true");
 });
 

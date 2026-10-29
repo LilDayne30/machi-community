@@ -146,20 +146,55 @@ test("実API：プロフィールと小部屋の投稿が再読込後も残る",
     "実際のD1へ保存した旅の報告です",
   );
 });
-test("実API：無料予約からキャンセルまで", async ({ page }) => {
+test("実API：イベント雛形の閲覧・保存は既存の予約と会員情報を変えない", async ({
+  page,
+  context,
+}) => {
+  const origin = { Origin: "http://127.0.0.1:5173" };
+  const reserved = await context.request.post("/api/bookings", {
+    headers: origin,
+    data: { talkId: "e2e-ui" },
+  });
+  expect(reserved.ok()).toBe(true);
+  const before = await (await context.request.get("/api/bootstrap")).json();
+  expect(
+    before.bookings.some(
+      (b: any) => b.talkId === "e2e-ui" && b.status === "confirmed",
+    ),
+  ).toBe(true);
+  const mutations: string[] = [];
+  page.on("request", (r) => {
+    if (r.url().includes("/api/") && r.method() !== "GET")
+      mutations.push(r.url());
+  });
   await page.goto("/talks/e2e-ui");
-  await page.getByRole("button", { name: "参加を申し込む" }).click();
-  await page.getByLabel("開催日時・料金・キャンセル条件を確認しました").check();
-  await page.getByRole("button", { name: "参加を確定する" }).click();
-  await page.getByRole("button", { name: "トーク詳細へ" }).click();
-  await page.reload();
-  await expect(page.locator(".booking-confirmed")).toHaveText("参加確定");
-  await expect(page.locator(".price")).toContainText("無料");
-  await page.getByRole("button", { name: "申込みをキャンセル" }).click();
-  await page.getByRole("button", { name: "キャンセルを確定" }).click();
   await expect(
-    page.getByRole("button", { name: "参加を申し込む" }),
+    page.getByRole("heading", { name: "テスト地域トーク ui", exact: true }),
   ).toBeVisible();
+  await expect(
+    page.getByRole("button", { name: "募集開始前です", exact: true }),
+  ).toBeDisabled();
+  await page.getByRole("button", { name: /イベント.*保存/ }).click();
+  await page.reload();
+  await expect(
+    page.getByRole("button", { name: /イベント.*保存/ }),
+  ).toHaveAttribute("aria-pressed", "true");
+  const after = await (await context.request.get("/api/bootstrap")).json();
+  expect(after.profile).toEqual(before.profile);
+  expect(after.bookings).toEqual(before.bookings);
+  expect(mutations).toEqual([]);
+  await page.goto("/talks?saved=1");
+  await expect(
+    page.locator(".event-card").filter({ hasText: "テスト地域トーク ui" }),
+  ).toHaveCount(1);
+  await expect(page.locator(".event-existing-bookings")).toContainText(
+    "参加確定",
+  );
+  await context.request.delete(
+    "/api/bookings/" +
+      before.bookings.find((b: any) => b.talkId === "e2e-ui").id,
+    { headers: origin },
+  );
 });
 test("実API：同意したプロ相談を保存し、宛先の事業者へ開示", async ({
   page,

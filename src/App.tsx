@@ -22,6 +22,11 @@ import {
   participationOf,
   studyTopics,
 } from "./lib/participation";
+import {
+  EventsPage as Talks,
+  EventDetailPage as TalkDetail,
+  EventPreview,
+} from "./components/events";
 import { useGlassEffects } from "./components/useGlassEffects";
 import {
   ArrowDown,
@@ -59,7 +64,6 @@ import {
   SlidersHorizontal,
   ShieldCheck,
   Sparkles,
-  Ticket,
   Users,
   Video,
   X,
@@ -85,12 +89,9 @@ import {
   emptyProfile,
   photos,
   providers,
-  yen,
-  type Booking,
   type Consultation,
   type CommunityMember,
   type Profile,
-  type Talk,
 } from "./lib/data";
 import {
   Avatar,
@@ -98,10 +99,8 @@ import {
   Empty,
   Heading,
   Modal,
-  People,
   SectionTitle,
   Skeleton,
-  TalkCard,
 } from "./components/ui";
 const nav = [
   { to: "/", label: "地域ホーム", icon: HomeIcon },
@@ -120,7 +119,7 @@ export default function App() {
   const pageTitle =
     [
       ...nav.filter((n) => n.to !== "/"),
-      { to: "/talks", label: "地域トーク" },
+      { to: "/talks", label: "イベント" },
       { to: "/notes", label: "現地のメモ" },
       { to: "/admin", label: "運営管理" },
     ].find((n) => location.pathname.startsWith(n.to))?.label || "地域ホーム";
@@ -201,7 +200,7 @@ export default function App() {
           }
         >
           <CalendarDays size={19} />
-          <span>地域トーク</span>
+          <span>イベント</span>
         </NavLink>
         <div className="sidebar-bottom">
           <div className="invite-tag">
@@ -250,8 +249,8 @@ export default function App() {
             <Link
               to="/talks"
               className="icon-button talks-shortcut"
-              aria-label="地域トークと申込み"
-              title="地域トークと申込み"
+              aria-label="イベントを開く"
+              title="イベントを開く"
             >
               <CalendarDays size={20} />
             </Link>
@@ -419,7 +418,7 @@ export default function App() {
         <Modal title="使い方・サポート" onClose={() => setHelp(false)}>
           <div className="prose">
             <p>
-              「話せる人」から相手を選んで、1対1でメッセージを送れます。同じ相手との会話は、次の旅でも続けられます。地域トークはホームから申し込めます。
+              「話せる人」から相手を選んで、1対1でメッセージを送れます。同じ相手との会話は、次の旅でも続けられます。イベントの企画はホームから確認できます。
             </p>
             <p>
               旅のステータスは左右にフリックするか、矢印ボタンで切り替えます。
@@ -428,7 +427,7 @@ export default function App() {
               気になる投稿は「通報」から運営へお知らせください。プロへの依頼は自分で内容と共有範囲を選んで送信できます。
             </p>
             <p>
-              初回トークは無料、2回目から1回1,000円。キャンセル条件は各トーク詳細で確認できます。
+              イベントは開催準備中です。日時・参加費・キャンセル条件は募集開始時にご案内します。
             </p>
           </div>
         </Modal>
@@ -499,14 +498,8 @@ function Home() {
             <CalendarDays size={23} />
           </span>
           <span>
-            <strong>地域トーク</strong>
-            <small>
-              {data.bookings.some((b) =>
-                ["confirmed", "pending"].includes(b.status),
-              )
-                ? "自分の申込みを確認"
-                : "募集・自分の申込み"}
-            </small>
+            <strong>イベント</strong>
+            <small>相談会・現地交流の企画を見る</small>
           </span>
           <ChevronRight size={18} />
         </Link>
@@ -633,14 +626,7 @@ function Home() {
               </Empty>
             )}
           </section>
-          <section>
-            <SectionTitle title="次の地域トーク" to="/talks" />
-            {data.talks[0] ? (
-              <TalkCard talk={data.talks[0]} compact />
-            ) : (
-              <Empty>募集中のトークはありません</Empty>
-            )}
-          </section>
+          <EventPreview />
         </div>
         <aside className="home-side">
           <TripCard />
@@ -651,7 +637,7 @@ function Home() {
               </span>
               <h3>このコミュニティについて</h3>
             </div>
-            <p>テーマと日時を決めて、住民や旅行経験者と少人数で話せます。</p>
+            <p>留学経験者への相談と、現地の学生・住民との交流ができます。</p>
             <div>
               <span>
                 <Users size={14} />
@@ -659,7 +645,7 @@ function Home() {
               </span>
               <span>
                 <Video size={14} />
-                旅行前からオンラインで
+                渡航前からオンラインで
               </span>
             </div>
           </div>
@@ -848,398 +834,6 @@ function TripCard() {
         </Modal>
       )}
     </div>
-  );
-}
-function Talks() {
-  const { data } = useApp();
-  const [filter, setFilter] = useState("すべて");
-  return (
-    <>
-      <Heading eyebrow="COMMUNITY TALKS" title="地域トーク">
-        <span className="pill">
-          <Video size={14} />
-          オンライン・45分
-        </span>
-      </Heading>
-      <div className="filter-row">
-        {["すべて", "喫茶店", "街歩き"].map((f) => (
-          <CheckChip
-            key={f}
-            selected={filter === f}
-            onClick={() => setFilter(f)}
-          >
-            {f}
-          </CheckChip>
-        ))}
-      </div>
-      <div className="talks-grid">
-        {data.talks
-          .filter((t) => filter === "すべて" || filter === t.category)
-          .map((t) => (
-            <TalkCard key={t.id} talk={t} />
-          ))}
-      </div>
-      <div className="info-strip glass">
-        <ShieldCheck size={20} />
-        <p>
-          初回は無料、2回目から1回1,000円。すべてのトークに進行役が参加します。
-        </p>
-      </div>
-      <Bookings />
-    </>
-  );
-}
-function Bookings() {
-  const { data } = useApp();
-  return (
-    <section className="booking-section">
-      <SectionTitle title="自分の申込み" />
-      {data.bookings.length ? (
-        <div className="booking-list">
-          {data.bookings.map((b) => {
-            const t = data.talks.find((t) => t.id === b.talkId);
-            return (
-              <Link
-                key={b.id}
-                className="booking-row glass"
-                to={"/talks/" + b.talkId}
-              >
-                <Ticket size={20} />
-                <div>
-                  <strong>{t?.title}</strong>
-                  <small>
-                    {t && dateLabel(t.date)} {t?.time}
-                  </small>
-                </div>
-                <span className="pill">{bookingLabel(b.status)}</span>
-              </Link>
-            );
-          })}
-        </div>
-      ) : (
-        <Empty>まだ申込みはありません</Empty>
-      )}
-    </section>
-  );
-}
-function bookingLabel(s: Booking["status"]) {
-  return {
-    confirmed: "参加確定",
-    pending: "入金待ち",
-    cancelled: "キャンセル済み",
-    attended: "参加済み",
-    refund_pending: "返金手続き中",
-    refunded: "返金済み",
-  }[s];
-}
-function TalkDetail() {
-  const { id } = useParams(),
-    { data, setData, toast, guard, refresh } = useApp(),
-    [confirm, setConfirm] = useState(false),
-    [cancel, setCancel] = useState(false),
-    [busy, setBusy] = useState(false),
-    [agreed, setAgreed] = useState(false),
-    [failure, setFailure] = useState(""),
-    [booked, setBooked] = useState(false);
-  const t = data.talks.find((t) => t.id === id),
-    booking = data.bookings.find(
-      (b) => b.talkId === id && !["cancelled", "refunded"].includes(b.status),
-    ),
-    paidBefore = data.bookings.some((b) =>
-      ["attended", "pending", "confirmed", "refunded"].includes(b.status),
-    ),
-    price = booking ? booking.amount : paidBefore ? t?.price || 1000 : 0;
-  useEffect(() => {
-    if (new URLSearchParams(location.search).get("payment") === "success")
-      toast("決済結果を確認中です。入金通知の受信後に参加が確定します。");
-  }, []);
-  if (!t) return <Empty>トークが見つかりません</Empty>;
-  async function reserve() {
-    if (!guard() || !agreed || !t) return;
-    setBusy(true);
-    setFailure("");
-    try {
-      if (data.mode === "preview") {
-        if (
-          data.bookings.some(
-            (b) =>
-              b.talkId === id && !["cancelled", "refunded"].includes(b.status),
-          )
-        )
-          throw new Error("このトークには申込み済みです");
-        setData((d) => ({
-          ...d,
-          bookings: [
-            ...d.bookings,
-            {
-              id: crypto.randomUUID(),
-              talkId: t.id,
-              status: "confirmed",
-              amount: price,
-            },
-          ],
-          talks: d.talks.map((x) =>
-            x.id === t.id ? { ...x, occupied: x.occupied + 1 } : x,
-          ),
-        }));
-        setBooked(true);
-        setConfirm(false);
-        toast("参加を確定しました（プレビュー）");
-      } else {
-        const r = await api<{ url?: string }>("/bookings", {
-          method: "POST",
-          body: JSON.stringify({ talkId: t.id }),
-        });
-        if (r.url) location.assign(r.url);
-        else {
-          await refresh();
-          setConfirm(false);
-          setBooked(true);
-          toast("参加が確定しました");
-        }
-      }
-    } catch (e) {
-      setFailure((e as Error).message);
-    } finally {
-      setBusy(false);
-    }
-  }
-  async function cancelBooking() {
-    if (!booking) return;
-    setBusy(true);
-    try {
-      if (data.mode === "production") {
-        await api("/bookings/" + booking.id, { method: "DELETE" });
-        await refresh();
-      } else
-        setData((d) => ({
-          ...d,
-          bookings: d.bookings.map((b) =>
-            b.id === booking.id
-              ? { ...b, status: b.amount ? "refund_pending" : "cancelled" }
-              : b,
-          ),
-          talks: d.talks.map((x) =>
-            x.id === id ? { ...x, occupied: Math.max(0, x.occupied - 1) } : x,
-          ),
-        }));
-      setCancel(false);
-      toast(
-        booking.amount
-          ? "キャンセルしました。返金を受け付けました"
-          : "キャンセルしました",
-      );
-    } catch (e) {
-      toast((e as Error).message);
-    } finally {
-      setBusy(false);
-    }
-  }
-  return (
-    <>
-      <Link className="back-link" to="/talks">
-        <ArrowLeft size={16} />
-        地域トーク
-      </Link>
-      <div className="detail-photo">
-        <img src={t.image} alt="" width={1200} height={600} />
-        <span className="photo-badge">
-          <Video size={14} />
-          オンライン地域トーク
-        </span>
-      </div>
-      <div className="detail-grid">
-        <article>
-          <div className="detail-heading">
-            <div className="eyebrow">{t.category}</div>
-            <h1 className="detail-title">{t.title}</h1>
-            <div className="detail-chips">
-              <span>
-                <CalendarDays size={16} />
-                {dateLabel(t.date)}
-              </span>
-              <span>{t.time}〜（日本時間）</span>
-              <span>{t.duration}分</span>
-            </div>
-          </div>
-          <div className="prose">
-            <h2>話すこと</h2>
-            <p>{t.description}</p>
-            <h2>参加する人</h2>
-            <div className="participant-list">
-              {t.participants.map((p) => (
-                <div key={p.name}>
-                  <Avatar name={p.name} color={p.color} src={p.avatarUrl} />
-                  <span>
-                    {p.name}
-                    <small>{p.role}</small>
-                  </span>
-                  {p.role === "進行役" && <ShieldCheck size={16} />}
-                </div>
-              ))}
-            </div>
-            <h2>当日の流れ</h2>
-            <ol>
-              <li>自己紹介と、最近の地域の話</li>
-              <li>テーマについて少人数で話す</li>
-              <li>次の訪問や、旅のあとも小部屋で会話を続ける</li>
-            </ol>
-            <h2>参加・キャンセルについて</h2>
-            <p>
-              定員{t.capacity}
-              人・進行役あり。会議リンクは参加確定後、開催前に登録メールへ送ります。
-            </p>
-            <p>
-              開始24時間前までのキャンセルは全額返金。それ以降は返金できません。運営都合の中止は全額返金します。
-            </p>
-          </div>
-        </article>
-        <aside className="booking-panel glass">
-          <span className="eyebrow">参加費</span>
-          <div className="price">
-            {yen(price)}
-            {price === 0 && <span>初回参加</span>}
-          </div>
-          <p>2回目から {yen(t.price)} / 回</p>
-          <div className="capacity-bar">
-            <span
-              style={{
-                width: Math.min(100, (t.occupied / t.capacity) * 100) + "%",
-              }}
-            />
-          </div>
-          <div className="capacity-label">
-            <span>
-              {t.occupied} / {t.capacity}人
-            </span>
-            <strong>残り{Math.max(0, t.capacity - t.occupied)}席</strong>
-          </div>
-          {booking ? (
-            <>
-              <div className="booking-confirmed">
-                <Check size={18} />
-                {bookingLabel(booking.status)}
-              </div>
-              {booking.status === "pending" && (
-                <button
-                  className="button primary full"
-                  onClick={async () => {
-                    try {
-                      const r = await api<{ url: string }>(
-                        "/bookings/" + booking.id + "/checkout",
-                        { method: "POST" },
-                      );
-                      location.assign(r.url);
-                    } catch (e) {
-                      toast((e as Error).message);
-                    }
-                  }}
-                >
-                  支払いを再開
-                </button>
-              )}
-              {["confirmed", "pending"].includes(booking.status) && (
-                <button
-                  className="button subtle full"
-                  onClick={() => setCancel(true)}
-                >
-                  申込みをキャンセル
-                </button>
-              )}
-            </>
-          ) : (
-            <button
-              disabled={t.occupied >= t.capacity}
-              className="button primary full"
-              onClick={() => {
-                if (guard()) setConfirm(true);
-              }}
-            >
-              {t.occupied >= t.capacity ? "満席です" : "参加を申し込む"}
-              <ArrowRight size={17} />
-            </button>
-          )}
-          <div className="booking-security">
-            <LockKeyhole size={13} />
-            招待制・少人数の交流
-          </div>
-        </aside>
-      </div>
-      {confirm && (
-        <Modal
-          title="参加内容の確認"
-          onClose={() => !busy && setConfirm(false)}
-        >
-          <div className="confirmation-summary">
-            <h3>{t.title}</h3>
-            <p>
-              {dateLabel(t.date)} {t.time}〜 / {t.duration}分
-            </p>
-            <strong>
-              {yen(price)}
-              {data.mode === "preview" ? "（プレビュー・請求なし）" : ""}
-            </strong>
-          </div>
-          <label className="checkbox-field">
-            <input
-              type="checkbox"
-              checked={agreed}
-              onChange={(e) => setAgreed(e.target.checked)}
-            />
-            <span>開催日時・料金・キャンセル条件を確認しました</span>
-          </label>
-          {failure && (
-            <p role="alert" className="error-text">
-              {failure}
-            </p>
-          )}
-          <button
-            className="button primary full"
-            disabled={!agreed || busy}
-            onClick={reserve}
-          >
-            {busy
-              ? "処理中…"
-              : price > 0 && data.mode === "production"
-                ? "Stripeで支払う"
-                : "参加を確定する"}
-          </button>
-        </Modal>
-      )}
-      {cancel && (
-        <Modal title="申込みのキャンセル" onClose={() => setCancel(false)}>
-          <p className="prose">
-            {t.title}
-            の申込みをキャンセルします。開始24時間前までなら全額返金されます。
-          </p>
-          <button
-            className="button danger full"
-            disabled={busy}
-            onClick={cancelBooking}
-          >
-            {busy ? "処理中…" : "キャンセルを確定"}
-          </button>
-        </Modal>
-      )}
-      {booked && (
-        <Modal title="参加が確定しました" onClose={() => setBooked(false)}>
-          <div className="success-icon">
-            <Check size={28} />
-          </div>
-          <p className="prose">
-            {data.mode === "preview"
-              ? "これは端末内のプレビュー予約です。実際の予約や請求は発生していません。"
-              : "開催前にメールで会議リンクをお知らせします。"}
-          </p>
-          <button
-            className="button primary full"
-            onClick={() => setBooked(false)}
-          >
-            トーク詳細へ
-          </button>
-        </Modal>
-      )}
-    </>
   );
 }
 function ConversationButton({
@@ -1459,12 +1053,10 @@ function Members() {
     ...new Set(data.people.flatMap((p) => p.interestedRegions)),
   ].sort((a, b) => a.localeCompare(b, "ja"));
   function filter(key: string, value: string) {
-    setParams((previous) => {
-      const next = new URLSearchParams(previous);
-      if (value) next.set(key, value);
-      else next.delete(key);
-      return next;
-    });
+    const next = new URLSearchParams(window.location.search);
+    if (value) next.set(key, value);
+    else next.delete(key);
+    setParams(next);
   }
   const list = data.people.filter(
     (p) =>
@@ -1921,7 +1513,7 @@ function Rooms() {
           onClick={() => setTab("group")}
           className={tab === "group" ? "active" : ""}
         >
-          地域トークの小部屋<span>{groups.length}</span>
+          イベントの小部屋<span>{groups.length}</span>
         </button>
       </div>
       <div className="conversation-tools">
@@ -2026,8 +1618,8 @@ function Rooms() {
             )}
             {!groups.length && (
               <Empty>
-                地域トーク参加後の小部屋が表示されます。
-                <Link to="/talks">地域トークを見る</Link>
+                イベント参加後の小部屋が表示されます。
+                <Link to="/talks">イベントを見る</Link>
               </Empty>
             )}
           </div>
@@ -2273,7 +1865,7 @@ function RoomDetail() {
                 あなたと{room.title}だけの会話
               </>
             ) : (
-              "地域トークの小部屋"
+              "イベントの小部屋"
             )}
           </div>
           {direct && !room.messages.length && !room.blocked && (
