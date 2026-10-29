@@ -25,8 +25,9 @@ import {
 import {
   EventsPage as Talks,
   EventDetailPage as TalkDetail,
-  EventPreview,
 } from "./components/events";
+import { Home } from "./components/home";
+import { VisitStatus } from "./components/visit-status";
 import { useGlassEffects } from "./components/useGlassEffects";
 import {
   ArrowDown,
@@ -42,7 +43,6 @@ import {
   Check,
   AlertCircle,
   ChevronDown,
-  ChevronLeft,
   ChevronRight,
   CircleHelp,
   Coffee,
@@ -51,7 +51,6 @@ import {
   Compass,
   Flag,
   Home as HomeIcon,
-  Leaf,
   LockKeyhole,
   LogOut,
   MapPin,
@@ -65,7 +64,6 @@ import {
   ShieldCheck,
   Sparkles,
   Users,
-  Video,
   X,
 } from "lucide-react";
 import { api, saveProfile, useApp } from "./lib/store";
@@ -103,7 +101,7 @@ import {
   Skeleton,
 } from "./components/ui";
 const nav = [
-  { to: "/", label: "地域ホーム", icon: HomeIcon },
+  { to: "/", label: "ホーム", icon: HomeIcon },
   { to: "/people", label: "話せる人", icon: Users },
   { to: "/rooms", label: "メッセージ", icon: MessageCircle },
   { to: "/consult", label: "プロへの相談", icon: Compass },
@@ -122,7 +120,7 @@ export default function App() {
       { to: "/talks", label: "イベント" },
       { to: "/notes", label: "現地のメモ" },
       { to: "/admin", label: "運営管理" },
-    ].find((n) => location.pathname.startsWith(n.to))?.label || "地域ホーム";
+    ].find((n) => location.pathname.startsWith(n.to))?.label || "ホーム";
   useEffect(() => {
     document.title = `${pageTitle} | Roamigo`;
     setTransition(true);
@@ -308,6 +306,7 @@ export default function App() {
                   <Route path="/rooms/:id" element={<RoomDetail />} />
                   <Route path="/people" element={<Members />} />
                   <Route path="/people/:id" element={<MemberDetail />} />
+                  <Route path="/notes" element={<NotesPage />} />
                   <Route path="/notes/:id" element={<NoteDetail />} />
                   <Route path="/consult" element={<Consult />} />
                   <Route path="/profile" element={<ProfilePage />} />
@@ -317,7 +316,7 @@ export default function App() {
                     element={
                       <div className="empty">
                         <h1>ページが見つかりません</h1>
-                        <Link to="/">地域ホームに戻る</Link>
+                        <Link to="/">ホームに戻る</Link>
                       </div>
                     }
                   />
@@ -366,9 +365,7 @@ export default function App() {
                     ? "マイページ"
                     : n.label === "プロへの相談"
                       ? "相談"
-                      : n.label === "地域ホーム"
-                        ? "ホーム"
-                        : n.label}
+                      : n.label}
                 </span>
               </>
             )}
@@ -421,7 +418,7 @@ export default function App() {
               「話せる人」から相手を選んで、1対1でメッセージを送れます。同じ相手との会話は、次の旅でも続けられます。イベントの企画はホームから確認できます。
             </p>
             <p>
-              旅のステータスは左右にフリックするか、矢印ボタンで切り替えます。
+              訪問ステータスはプロフィールの「訪問予定」で、左右にフリックするか矢印ボタンで切り替え、変更を保存します。
             </p>
             <p>
               気になる投稿は「通報」から運営へお知らせください。プロへの依頼は自分で内容と共有範囲を選んで送信できます。
@@ -435,233 +432,52 @@ export default function App() {
     </div>
   );
 }
-function Home() {
-  const { data } = useApp(),
-    [filter, setFilter] = useState("すべて"),
-    [query, setQuery] = useState(""),
-    [search, setSearch] = useState(false);
+function NotesPage() {
+  const { data } = useApp();
+  const [params, setParams] = useSearchParams();
+  const filter = params.get("category") || "すべて";
+  const query = params.get("q") || "";
+  function update(key: string, value: string) {
+    const next = new URLSearchParams(window.location.search);
+    if (!value || value === "すべて") next.delete(key);
+    else next.set(key, value);
+    setParams(next, { replace: key === "q", preventScrollReset: true });
+  }
   const list = data.notes.filter(
     (n) =>
       (filter === "すべて" || n.category === filter) &&
-      (!query || (n.title + n.body + n.author).includes(query)),
+      (!query ||
+        (n.title + n.body + n.author)
+          .toLocaleLowerCase()
+          .includes(query.toLocaleLowerCase())),
   );
   return (
-    <>
-      <Heading eyebrow="YOUR COMMUNITY" title="地域ホーム">
-        <button
-          className="button subtle small-button"
-          onClick={() => setSearch(!search)}
-        >
-          <Search size={16} />
-          <span>メモを検索</span>
-        </button>
-      </Heading>
-      <div className="home-axis-grid" aria-label="留学と現地交流の2つの入口">
-        <Link className="home-axis-card glass" to="/people?axis=alumni">
-          <span className="axis-symbol">
-            <GraduationCap size={28} />
-          </span>
-          <div>
-            <h2>留学経験者に相談</h2>
-            <p>国が未定でも、知りたいことから探せます</p>
-          </div>
-          <ArrowUpRight size={20} />
-        </Link>
-        <Link className="home-axis-card glass" to="/people?axis=local">
-          <span className="axis-symbol">
-            <Globe2 size={28} />
-          </span>
-          <div>
-            <h2>現地の人と交流</h2>
-            <p>現地の学生・留学中の人・住民と話せます</p>
-          </div>
-          <ArrowUpRight size={20} />
-        </Link>
-      </div>
-      <div className="home-actions" aria-label="よく使う機能">
-        <Link to="/rooms" className="home-action glass">
-          <span className="action-icon">
-            <MessageCircle size={23} />
-          </span>
-          <span>
-            <strong>メッセージ</strong>
-            <small>
-              {data.rooms.some((r) => r.unread)
-                ? `${data.rooms.reduce((sum, r) => sum + r.unread, 0)}件の未読`
-                : "会話のつづき"}
-            </small>
-          </span>
-          <ChevronRight size={18} />
-        </Link>
-        <Link to="/talks" className="home-action glass">
-          <span className="action-icon">
-            <CalendarDays size={23} />
-          </span>
-          <span>
-            <strong>イベント</strong>
-            <small>相談会・現地交流の企画を見る</small>
-          </span>
-          <ChevronRight size={18} />
-        </Link>
-      </div>
-      {search && (
-        <div className="search-panel glass">
-          <label htmlFor="local-search">話題・メモを検索</label>
-          <div className="search-input">
-            <Search size={17} />
-            <input
-              id="local-search"
-              value={query}
-              onChange={(e) => setQuery(e.target.value)}
-              placeholder="喫茶店、街歩き…"
-            />
-            <button
-              aria-label="検索を閉じる"
-              onClick={() => {
-                setSearch(false);
-                setQuery("");
-              }}
-            >
+    <div className="notes-library">
+      <Heading eyebrow="NOTES" title="現地のメモ" />
+      <div className="search-panel glass">
+        <label htmlFor="local-search">話題・メモを検索</label>
+        <div className="search-input">
+          <Search size={18} aria-hidden="true" />
+          <input
+            id="local-search"
+            value={query}
+            onChange={(e) => update("q", e.target.value)}
+            placeholder="テーマ、場所、投稿者…"
+          />
+          {query && (
+            <button aria-label="検索をクリア" onClick={() => update("q", "")}>
               <X size={17} />
             </button>
-          </div>
-        </div>
-      )}
-      <section className="home-discovery glass" aria-label="地域から人を探す">
-        <div className="discovery-globe" aria-hidden="true">
-          <Globe2 size={74} strokeWidth={0.8} />
-        </div>
-        <div>
-          <h2>地域から人を探す</h2>
-          <div className="home-residence-shortcuts">
-            <Link to="/people?status=current">
-              <MapPin size={15} />
-              今住んでいる人
-              <ArrowUpRight size={14} />
-            </Link>
-            <Link to="/people?status=former">
-              <MapPin size={15} />
-              住んだことがある人
-              <ArrowUpRight size={14} />
-            </Link>
-          </div>
-          {data.profile.interestedRegions.length > 0 && (
-            <RegionLinks regions={data.profile.interestedRegions} />
           )}
         </div>
-        <Link to="/people" className="button subtle small-button">
-          話せる人を見る
-          <ArrowUpRight size={17} />
-        </Link>
-      </section>
-      <section className="home-people">
-        <SectionTitle title="話せる人" to="/people" />
-        <div className="people-grid">
-          {data.people.slice(0, 3).map((person, index) => (
-            <MemberCard key={person.id} person={person} index={index} />
-          ))}
-        </div>
-        {!data.people.length && (
-          <Empty>
-            {data.user
-              ? "新しい会話を受け付けている人はまだいません。"
-              : "ログインすると、話せる人を見られます。"}
-            <Link to="/profile">プロフィールを開く</Link>
-          </Empty>
-        )}
-      </section>
-      <div className="home-grid">
-        <div className="home-main">
-          <section>
-            <SectionTitle
-              title="会話のつづき"
-              to="/rooms"
-              label="メッセージへ"
-            />
-            <div className="room-preview-list">
-              {data.rooms
-                .filter((r) => r.kind === "direct")
-                .slice(0, 2)
-                .map((r) => (
-                  <Link
-                    className="room-preview glass"
-                    key={r.id}
-                    to={"/rooms/" + r.id}
-                  >
-                    <div className="room-cover">
-                      <Avatar
-                        name={r.title}
-                        color={r.peer?.color}
-                        src={r.peer?.avatarUrl}
-                      />
-                      {r.unread > 0 && <span className="unread-dot" />}
-                    </div>
-                    <div className="room-preview-text">
-                      <h3>{r.title}</h3>
-                      <p>{r.messages.at(-1)?.body || "会話を始めましょう"}</p>
-                      <small>
-                        <LockKeyhole size={12} />
-                        1対1<span>·</span>
-                        {r.messages.at(-1)?.time || ""}
-                      </small>
-                    </div>
-                    {r.unread > 0 ? (
-                      <span className="unread-badge">{r.unread}</span>
-                    ) : (
-                      <ChevronRight size={17} />
-                    )}
-                  </Link>
-                ))}
-            </div>
-            {data.mode === "production" && !data.user && (
-              <Link className="text-link" to="/profile">
-                ログインしてメッセージを見る
-                <ArrowUpRight size={15} />
-              </Link>
-            )}
-            {!data.rooms.some((r) => r.kind === "direct") && data.user && (
-              <Empty>
-                会話を始めると、ここに表示されます。
-                <Link to="/people">話せる人を見る</Link>
-              </Empty>
-            )}
-          </section>
-          <EventPreview />
-        </div>
-        <aside className="home-side">
-          <TripCard />
-          <div className="community-info glass">
-            <div className="inline">
-              <span className="soft-icon">
-                <Leaf size={19} />
-              </span>
-              <h3>このコミュニティについて</h3>
-            </div>
-            <p>留学経験者への相談と、現地の学生・住民との交流ができます。</p>
-            <div>
-              <span>
-                <Users size={14} />
-                少人数・進行役あり
-              </span>
-              <span>
-                <Video size={14} />
-                渡航前からオンラインで
-              </span>
-            </div>
-          </div>
-        </aside>
       </div>
       <section className="notes-section">
-        <SectionTitle
-          title="現地のメモ"
-          count={String(data.notes.length).padStart(2, "0")}
-        />
         <div className="filter-row" role="group" aria-label="現地メモのテーマ">
           {["すべて", "喫茶店", "古本屋", "街歩き"].map((f) => (
             <CheckChip
               key={f}
               selected={filter === f}
-              onClick={() => setFilter(f)}
+              onClick={() => update("category", f)}
             >
               {f === "喫茶店" && <Coffee size={14} />}
               {f}
@@ -709,130 +525,6 @@ function Home() {
           <Empty>一致するメモはありません</Empty>
         )}
       </section>
-    </>
-  );
-}
-const stages = ["訪問を計画中", "訪問予定あり", "滞在中", "旅のあと"];
-function TripCard() {
-  const { data, setData, toast, guard } = useApp(),
-    [stage, setStage] = useState(() =>
-      data.mode === "preview"
-        ? Number(localStorage.getItem("machi-trip-stage") || 0)
-        : data.profile.visitStatus || 0,
-    ),
-    [editing, setEditing] = useState(false),
-    [date, setDate] = useState(data.profile.visitDate),
-    [visitRegionId, setVisitRegionId] = useState(data.profile.visitRegionId),
-    start = useRef(0);
-  async function move(delta: number) {
-    if (!guard()) return;
-    const s = (stage + delta + 4) % 4;
-    setStage(s);
-    try {
-      const p = { ...data.profile, visitStatus: s };
-      await saveProfile(p, data.mode);
-      setData((d) => ({ ...d, profile: p }));
-      if (data.mode === "preview")
-        localStorage.setItem("machi-trip-stage", String(s));
-      toast("旅のステータス：" + stages[s]);
-    } catch (e) {
-      setStage(stage);
-      toast((e as Error).message);
-    }
-  }
-  async function submit(e: FormEvent) {
-    e.preventDefault();
-    if (!guard()) return;
-    try {
-      const p = { ...data.profile, visitDate: date, visitRegionId };
-      await saveProfile(p, data.mode);
-      setData((d) => ({ ...d, profile: p }));
-      setEditing(false);
-      toast("訪問予定を保存しました");
-    } catch (e) {
-      toast((e as Error).message);
-    }
-  }
-  return (
-    <div
-      className="trip-card glass"
-      onTouchStart={(e) => (start.current = e.touches[0].clientX)}
-      onTouchEnd={(e) => {
-        const dx = e.changedTouches[0].clientX - start.current;
-        if (Math.abs(dx) > 45) move(dx < 0 ? 1 : -1);
-      }}
-    >
-      <div className="trip-card-top">
-        <span>MY NEXT VISIT</span>
-        <MapPin size={17} />
-      </div>
-      <div className="trip-city">
-        {regionLabel(data.profile.visitRegionId) || "訪問先未登録"}
-        <small>次の訪問</small>
-      </div>
-      <div className="trip-date">
-        {data.profile.visitDate
-          ? dateLabel(data.profile.visitDate)
-          : "日程を考え中"}
-      </div>
-      <div className="trip-status">
-        <button aria-label="前の訪問ステータス" onClick={() => move(-1)}>
-          <ChevronLeft size={17} />
-        </button>
-        <AnimatePresence mode="wait">
-          <motion.span
-            key={stage}
-            initial={{ opacity: 0, x: 8 }}
-            animate={{ opacity: 1, x: 0 }}
-            exit={{ opacity: 0, x: -8 }}
-          >
-            <span className="live-dot" />
-            {stages[stage]}
-          </motion.span>
-        </AnimatePresence>
-        <button aria-label="次の訪問ステータス" onClick={() => move(1)}>
-          <ChevronRight size={17} />
-        </button>
-      </div>
-      <div className="stage-dots">
-        {stages.map((s, i) => (
-          <button
-            key={s}
-            aria-label={s}
-            aria-pressed={stage === i}
-            className={stage === i ? "active" : ""}
-            onClick={() => void move(i - stage)}
-          />
-        ))}
-      </div>
-      <button className="button full subtle" onClick={() => setEditing(true)}>
-        <Plus size={15} />
-        訪問予定を編集
-      </button>
-      {editing && (
-        <Modal title="次の訪問予定" onClose={() => setEditing(false)}>
-          <form onSubmit={submit}>
-            <RegionPicker
-              label="訪問先"
-              value={visitRegionId}
-              onChange={setVisitRegionId}
-            />
-            <label className="field">
-              訪問予定日
-              <input
-                type="date"
-                required
-                min="2026-10-21"
-                value={date}
-                onChange={(e) => setDate(e.target.value)}
-              />
-            </label>
-            <button className="button primary full" type="submit">
-              保存する
-            </button>
-          </form>
-        </Modal>
-      )}
     </div>
   );
 }
@@ -2089,7 +1781,7 @@ function NoteDetail() {
   if (!n) return <Empty>メモが見つかりません</Empty>;
   return (
     <>
-      <Link to="/" className="back-link">
+      <Link to="/notes" className="back-link">
         <ArrowLeft size={16} />
         現地のメモ
       </Link>
@@ -2900,6 +2592,12 @@ function ProfilePage() {
               <p>予定が決まっている範囲で登録できます。</p>
             </div>
           </div>
+          <VisitStatus
+            value={p.visitStatus}
+            onChange={(visitStatus) =>
+              setP((current) => ({ ...current, visitStatus }))
+            }
+          />
           <RegionPicker
             label="次の訪問先"
             value={p.visitRegionId}

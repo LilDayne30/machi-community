@@ -6,7 +6,12 @@ import { emptyProfile } from "../src/lib/data";
 test("2つの入口：希望国未定の経験者相談と現地生の交流を切り替える", async ({
   page,
 }) => {
-  await page.getByRole("link", { name: /留学経験者に相談 国が未定/ }).click();
+  await expect(
+    page.getByRole("button", { name: "留学経験者に相談", exact: true }),
+  ).toHaveAttribute("aria-pressed", "true");
+  await page
+    .getByRole("link", { name: "条件を指定して探す", exact: true })
+    .click();
   await expect(page).toHaveURL(/axis=alumni/);
   await expect(page.locator(".person-card")).toHaveCount(2);
   await page
@@ -156,7 +161,7 @@ test.afterEach(async ({ page }) => {
 test.beforeEach(async ({ page }) => {
   await page.goto("/");
   await expect(
-    page.getByRole("heading", { name: "地域ホーム", exact: true }),
+    page.getByRole("heading", { name: "ホーム", exact: true }),
   ).toBeVisible();
 });
 test("ホーム・画像・レスポンシブ・主要画面の2タップ導線", async ({
@@ -164,8 +169,23 @@ test("ホーム・画像・レスポンシブ・主要画面の2タップ導線"
 }, info) => {
   const errors: string[] = [];
   page.on("pageerror", (e) => errors.push(e.message));
-  await expect(page.locator(".home-discovery")).toBeVisible();
-  await expect(page.locator(".event-home-preview .event-card")).toHaveCount(2);
+  await expect(
+    page.getByRole("heading", { name: "話せる人を探す", exact: true }),
+  ).toBeVisible();
+  await expect(page.locator(".home-person")).toHaveCount(2);
+  await expect(
+    page.locator(".notes-grid, .trip-card, .event-card, .home-discovery"),
+  ).toHaveCount(0);
+  await expect(
+    page
+      .locator(".home-library")
+      .getByRole("link", { name: "現地のメモ", exact: true }),
+  ).toHaveAttribute("href", "/notes");
+  await expect(
+    page
+      .locator(".home-library")
+      .getByRole("link", { name: "イベント", exact: true }),
+  ).toHaveAttribute("href", "/talks");
   expect(
     await page.evaluate(() => document.documentElement.scrollWidth),
   ).toBeLessThanOrEqual(page.viewportSize()!.width);
@@ -206,9 +226,13 @@ test("ホーム・画像・レスポンシブ・主要画面の2タップ導線"
   expect(errors).toEqual([]);
 });
 test("現地メモのテーマ絞り込み・検索・保存", async ({ page }) => {
+  await page
+    .locator(".home-library")
+    .getByRole("link", { name: "現地のメモ", exact: true })
+    .click();
+  await expect(page).toHaveURL(/\/notes$/);
   await page.getByRole("button", { name: "古本屋", exact: true }).click();
   await expect(page.locator(".note-card")).toHaveCount(1);
-  await page.getByRole("button", { name: "メモを検索" }).click();
   await page.getByLabel("話題・メモを検索").fill("見つからない語");
   await expect(page.getByText("一致するメモはありません")).toBeVisible();
   await page.getByLabel("話題・メモを検索").fill("雨");
@@ -226,6 +250,75 @@ test("現地メモのテーマ絞り込み・検索・保存", async ({ page }) 
     page.getByRole("button", { name: "メモを保存" }),
   ).toHaveAttribute("aria-pressed", "true");
 });
+test("ホームの目的切替をキーボードで操作し、絞り込みへ引き継ぐ", async ({
+  page,
+}) => {
+  await page.emulateMedia({ reducedMotion: "reduce" });
+  const local = page.getByRole("button", {
+    name: "現地の人と交流",
+    exact: true,
+  });
+  await local.focus();
+  await page.keyboard.press("Space");
+  await expect(local).toHaveAttribute("aria-pressed", "true");
+  await expect(page.locator(".home-people-preview")).toContainText(
+    "現地の学生",
+  );
+  await expect(page.locator(".home-people-preview")).toHaveCSS(
+    "animation-name",
+    "none",
+  );
+  await page
+    .getByRole("link", { name: "条件を指定して探す", exact: true })
+    .click();
+  await expect(page).toHaveURL(/\/people\?axis=local$/);
+  await page.goBack();
+  await expect(local).toHaveAttribute("aria-pressed", "true");
+  await page.setViewportSize({ width: 320, height: 740 });
+  await expect(page.locator(".home-person").first()).toBeVisible();
+  expect(
+    await page.evaluate(() => document.documentElement.scrollWidth),
+  ).toBeLessThanOrEqual(320);
+});
+test("ホームの未ログイン・候補なしでもログインと専用ページへ進める", async ({
+  page,
+}) => {
+  await page.route("**/api/bootstrap", async (route) => {
+    const response = await route.fetch();
+    await route.fulfill({
+      json: {
+        ...(await response.json()),
+        mode: "production",
+        user: null,
+        people: [],
+        rooms: [],
+      },
+    });
+  });
+  await page.reload();
+  await expect(page.locator(".home-discover-empty")).toContainText(
+    "ログインすると、話せる人を見られます",
+  );
+  await expect(page.locator(".home-conversations-empty")).toContainText(
+    "ログインすると会話を確認できます",
+  );
+  await page
+    .locator(".home-library")
+    .getByRole("link", { name: "現地のメモ", exact: true })
+    .click();
+  await expect(
+    page.getByRole("heading", { name: "現地のメモ", exact: true }),
+  ).toBeVisible();
+  await page.goBack();
+  await page
+    .locator(".home-discover-empty")
+    .getByRole("link", { name: "ログインへ", exact: true })
+    .click();
+  await expect(page).toHaveURL(/\/profile$/);
+  await expect(
+    page.getByRole("heading", { name: "プロフィール", exact: true }),
+  ).toBeVisible();
+});
 test("イベント雛形：一覧から詳細へ進み、予約せず端末に保存できる", async ({
   page,
 }) => {
@@ -234,7 +327,11 @@ test("イベント雛形：一覧から詳細へ進み、予約せず端末に�
     if (r.url().includes("/api/") && r.method() !== "GET")
       mutations.push(r.url());
   });
-  await page.locator(".event-home-preview .event-card-link").first().click();
+  await page
+    .locator(".home-library")
+    .getByRole("link", { name: "イベント", exact: true })
+    .click();
+  await page.locator(".event-card-link").first().click();
   await expect(
     page.getByRole("heading", {
       name: "高校留学の学校生活と、最初の友達づくり",
@@ -386,9 +483,12 @@ test("イベントの小部屋・投稿・返信・通報", async ({ page }) => 
   await expect(page.locator(".room-card .unread-badge")).toHaveCount(0);
 });
 test("訪問予定とステータスのフリック・プロフィール保存", async ({ page }) => {
+  await page.goto("/profile#profile-visit");
   await page.getByRole("button", { name: "次の訪問ステータス" }).click();
-  await expect(page.locator(".trip-status")).toContainText("訪問予定あり");
-  await page.locator(".trip-card").evaluate((el) => {
+  await expect(page.locator(".visit-status-control")).toContainText(
+    "訪問予定あり",
+  );
+  await page.locator(".visit-status-control").evaluate((el) => {
     el.dispatchEvent(
       new TouchEvent("touchstart", {
         touches: [
@@ -406,12 +506,15 @@ test("訪問予定とステータスのフリック・プロフィール保存",
       }),
     );
   });
-  await expect(page.locator(".trip-status")).toContainText("滞在中");
-  await page.getByRole("button", { name: "訪問予定を編集" }).click();
-  await page.getByLabel("訪問予定日", { exact: true }).fill("2026-11-20");
-  await page.getByRole("button", { name: "保存する", exact: true }).click();
-  await expect(page.locator(".trip-date")).toContainText("11月20日");
-  await page.goto("/profile");
+  await expect(page.locator(".visit-status-control")).toContainText("滞在中");
+  await page.getByLabel("次の訪問予定", { exact: true }).fill("2026-11-20");
+  await page.getByRole("button", { name: "変更を保存", exact: true }).click();
+  await expect(page.getByRole("status")).toContainText("保存しました");
+  await page.reload();
+  await expect(page.locator(".visit-status-control")).toContainText("滞在中");
+  await expect(page.getByLabel("次の訪問予定", { exact: true })).toHaveValue(
+    "2026-11-20",
+  );
   await page
     .getByLabel("表示名", { exact: true })
     .fill("京都に再訪するテストさん");
@@ -545,7 +648,7 @@ test("通信中はスケルトンを表示", async ({ page }) => {
   await page.reload();
   await expect(page.getByRole("status", { name: "読み込み中" })).toBeVisible();
   await expect(
-    page.getByRole("heading", { name: "地域ホーム", exact: true }),
+    page.getByRole("heading", { name: "ホーム", exact: true }),
   ).toBeVisible();
 });
 test("未定義URLは404を表示", async ({ page }) => {
@@ -553,9 +656,9 @@ test("未定義URLは404を表示", async ({ page }) => {
   await expect(
     page.getByRole("heading", { name: "ページが見つかりません" }),
   ).toBeVisible();
-  await page.getByRole("link", { name: "地域ホームに戻る" }).click();
+  await page.getByRole("link", { name: "ホームに戻る" }).click();
   await expect(
-    page.getByRole("heading", { name: "地域ホーム", exact: true }),
+    page.getByRole("heading", { name: "ホーム", exact: true }),
   ).toBeVisible();
 });
 test("アクセシビリティ：ホームと主要画面", async ({ page }) => {
@@ -568,6 +671,7 @@ test("アクセシビリティ：ホームと主要画面", async ({ page }) => 
     "/rooms/dm-misaki",
     "/talks",
     "/talks/t1",
+    "/notes",
     "/notes/n1",
     "/consult",
     "/profile",
@@ -609,9 +713,7 @@ test("アクセシビリティ：ホームと主要画面", async ({ page }) => 
 test("ホームから2タップで個人プロフィールと1対1の会話へ進む", async ({
   page,
 }) => {
-  await page
-    .getByRole("link", { name: "美咲 日本・京都", exact: true })
-    .click();
+  await page.getByRole("link", { name: /^美咲 カナダ/ }).click();
   await expect(
     page.getByRole("heading", { name: "美咲", level: 1, exact: true }),
   ).toBeVisible();
