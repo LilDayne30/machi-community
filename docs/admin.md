@@ -53,7 +53,7 @@ Cookie名は開発用 `machi_admin_session`、本番用 `__Host-machi_admin_sess
 
 ## 公開準備
 
-`wrangler.admin.jsonc` は既存と同じCloudflareアカウント・D1を指定しています。予定URLは `https://machi-admin.danaoki30.workers.dev` です。実デプロイ済みという意味ではありません。管理側にCronを設定せず、通知・返金の定期処理は利用者Workerだけが実行します。
+`wrangler.admin.jsonc` は既存と同じCloudflareアカウント・D1を指定しています。配信先は `https://machi-admin.lildayne.workers.dev` です。管理者ログインは保留し、本番の未認証ロックを維持します。管理側にCronを設定せず、通知・返金の定期処理は利用者Workerだけが実行します。
 
 ```sh
 npm run db:remote

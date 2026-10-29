@@ -319,6 +319,41 @@ test("ホームの未ログイン・候補なしでもログインと専用ペ�
     page.getByRole("heading", { name: "プロフィール", exact: true }),
   ).toBeVisible();
 });
+test("本番の相談画面：事業者が未登録でも案内とアクセシビリティを保つ", async ({
+  page,
+}) => {
+  await page.route("**/api/bootstrap", async (route) => {
+    const response = await route.fetch();
+    await route.fulfill({
+      json: {
+        ...(await response.json()),
+        mode: "production",
+        user: null,
+        people: [],
+        rooms: [],
+        providers: [],
+      },
+    });
+  });
+  await page.goto("/consult");
+  await expect(
+    page.getByRole("heading", { name: "プロへの相談", exact: true }),
+  ).toBeVisible();
+  await expect(
+    page.getByText("相談を受付中の事業者はいません", { exact: true }),
+  ).toBeVisible();
+  await expect(page.locator(".provider-card")).toHaveCount(0);
+  await expect(page.locator(".page-scene")).toHaveCSS("opacity", "1");
+  const result = await new AxeBuilder({ page })
+    .withTags(["wcag2a", "wcag2aa", "wcag21a", "wcag21aa"])
+    .analyze();
+  expect(
+    result.violations.map((v) => ({
+      id: v.id,
+      targets: v.nodes.map((n) => n.target),
+    })),
+  ).toEqual([]);
+});
 test("イベント雛形：一覧から詳細へ進み、予約せず端末に保存できる", async ({
   page,
 }) => {

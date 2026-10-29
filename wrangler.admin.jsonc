@@ -16,7 +16,7 @@
     "DEMO_MODE": "false",
     "APP_SURFACE": "admin",
     "ADMIN_EMAIL": "danaoki30@gmail.com",
-    "APP_ORIGIN": "https://machi-admin.danaoki30.workers.dev",
+    "APP_ORIGIN": "https://machi-admin.lildayne.workers.dev",
   },
   "d1_databases": [
     {

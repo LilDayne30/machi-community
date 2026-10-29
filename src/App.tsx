@@ -1908,14 +1908,12 @@ function Consult() {
       <Heading eyebrow="LOCAL PROFESSIONALS" title="プロへの相談" />
       <div className="info-strip glass">
         <ShieldCheck size={20} />
-        <p>
-          あなたが依頼したときだけ、選んだ事業者に相談が届きます。
-        </p>
+        <p>あなたが依頼したときだけ、選んだ事業者に相談が届きます。</p>
       </div>
       {data.mode === "production" && !data.providers?.length && (
         <Empty>相談を受付中の事業者はいません</Empty>
       )}
-      <div className="providers-grid" aria-label="相談できるプロ">
+      <section className="providers-grid" aria-label="相談できるプロ">
         {(data.mode === "preview" ? providers : data.providers || []).map(
           (p) => (
             <div className="provider-card glass" key={p.id}>
@@ -1965,7 +1963,7 @@ function Consult() {
             </div>
           ),
         )}
-      </div>
+      </section>
       {selected && (
         <form
           className="consult-form glass"
@@ -2728,7 +2726,7 @@ function AdminRedirect() {
     import.meta.env.VITE_ADMIN_ORIGIN ||
     (import.meta.env.DEV
       ? "http://127.0.0.1:5174"
-      : "https://machi-admin.danaoki30.workers.dev");
+      : "https://machi-admin.lildayne.workers.dev");
   useEffect(() => {
     window.location.replace(origin);
   }, [origin]);

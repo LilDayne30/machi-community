@@ -679,7 +679,7 @@ export default function App() {
         </div>
         <h1>管理者ログインは保留中です</h1>
         <p>管理サイトの公開は、管理者認証の設定後に有効になります。</p>
-        <a className="btn" href="https://machi-community.danaoki30.workers.dev">
+        <a className="btn" href="https://machi-community.lildayne.workers.dev">
           利用者サイトへ
           <ArrowUpRight size={16} />
         </a>
@@ -792,7 +792,7 @@ export default function App() {
               href={
                 import.meta.env.DEV
                   ? "http://127.0.0.1:5173"
-                  : "https://machi-community.danaoki30.workers.dev"
+                  : "https://machi-community.lildayne.workers.dev"
               }
             >
               利用者サイト

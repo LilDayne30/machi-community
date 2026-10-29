@@ -14,7 +14,7 @@
   "vars": {
     "APP_ENV": "production",
     "DEMO_MODE": "false",
-    "APP_ORIGIN": "https://machi-community.danaoki30.workers.dev",
+    "APP_ORIGIN": "https://machi-community.lildayne.workers.dev",
   },
   "d1_databases": [
     {
