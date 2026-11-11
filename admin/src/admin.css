@@ -1893,3 +1893,43 @@ summary {
     visibility: visible;
   }
 }
+
+/* Accessibility layer: 16px form text and 44×44px targets, same tokens. */
+input,
+select,
+textarea,
+.search input,
+.status-filter select,
+.fields input,
+.fields textarea,
+.fields select {
+  font-size: 1rem;
+}
+.btn,
+.text-btn,
+.preview-bar button,
+.search,
+.status-filter select,
+.fields input,
+.fields select,
+.sidebar nav a,
+.site-link {
+  min-height: 44px;
+}
+.text-btn,
+.preview-bar button {
+  min-width: 44px;
+}
+.icon-btn {
+  width: 44px;
+  height: 44px;
+}
+summary {
+  padding-block: 13px;
+}
+@media (max-width: 380px) {
+  /* Leave room for the 44px buttons on the narrowest phones. */
+  .today {
+    display: none;
+  }
+}

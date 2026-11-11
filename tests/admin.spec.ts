@@ -1,4 +1,5 @@
 import { test, expect, type Page } from "@playwright/test";
+import { undersizedControls } from "./helpers";
 import AxeBuilder from "@axe-core/playwright";
 async function go(page: Page, label: string) {
   const mobile = page.getByRole("button", { name: "管理メニューを開く" });
@@ -42,6 +43,7 @@ test("全管理画面へ2タップ以内で移動し、はみ出しとアクセ�
         () => document.documentElement.scrollWidth <= innerWidth + 1,
       ),
     ).toBe(true);
+    expect(await undersizedControls(page), label).toEqual([]);
     const result = await new AxeBuilder({ page })
       .withTags(["wcag2a", "wcag2aa", "wcag21a", "wcag21aa"])
       .analyze();
