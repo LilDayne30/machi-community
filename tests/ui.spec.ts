@@ -1,4 +1,4 @@
-import { openPeopleFilters } from "./helpers";
+import { openPeopleFilters, undersizedControls } from "./helpers";
 import { test, expect } from "@playwright/test";
 import AxeBuilder from "@axe-core/playwright";
 import { emptyProfile } from "../src/lib/data";
@@ -283,6 +283,7 @@ test("ホームの目的切替をキーボードで操作し、絞り込みへ�
 test("ホームの未ログイン・候補なしでもログインと専用ページへ進める", async ({
   page,
 }) => {
+  let google = false;
   await page.route("**/api/bootstrap", async (route) => {
     const response = await route.fetch();
     await route.fulfill({
@@ -292,10 +293,39 @@ test("ホームの未ログイン・候補なしでもログインと専用ペ�
         user: null,
         people: [],
         rooms: [],
+        configured: { google, stripe: false },
       },
     });
   });
   await page.reload();
+  const welcome = page.locator(".home-welcome");
+  await expect(welcome).toContainText(
+    "留学を考える家族と、留学経験者・現地の人をつなぐ招待制の相談の場です。",
+  );
+  // Googleログインが使えない間は、利用者向けの準備中の案内だけを出す。
+  await expect(welcome).toContainText("Googleログインは準備中です");
+  await expect(welcome).not.toContainText("未接続");
+  await expect(welcome.getByRole("link")).toHaveCount(0);
+  google = true;
+  await page.reload();
+  await expect(
+    welcome.getByRole("link", { name: "Googleで続ける", exact: true }),
+  ).toHaveAttribute("href", "/api/auth/google");
+  await expect(welcome).not.toContainText("準備中");
+  await expect(page.locator(".page-scene")).toHaveCSS("opacity", "1");
+  expect(
+    await page.evaluate(() => document.documentElement.scrollWidth),
+  ).toBeLessThanOrEqual(page.viewportSize()!.width);
+  expect(await undersizedControls(page)).toEqual([]);
+  const result = await new AxeBuilder({ page })
+    .withTags(["wcag2a", "wcag2aa", "wcag21a", "wcag21aa"])
+    .analyze();
+  expect(
+    result.violations.map((v) => ({
+      id: v.id,
+      targets: v.nodes.map((n) => n.target),
+    })),
+  ).toEqual([]);
   await expect(page.locator(".home-discover-empty")).toContainText(
     "ログインすると、話せる人を見られます",
   );
@@ -571,9 +601,10 @@ test("訪問予定とステータスのフリック・プロフィール保存",
   await expect(
     page.getByRole("button", { name: "古本屋", exact: true }),
   ).toHaveAttribute("aria-pressed", "true");
-  await expect(
-    page.getByRole("button", { name: "Google認証は未接続です" }),
-  ).toBeDisabled();
+  await expect(page.locator(".login-card")).toContainText(
+    "Googleログインは準備中です",
+  );
+  await expect(page.locator(".login-card")).not.toContainText("未接続");
 });
 test("プロ相談・明示的な共有・送信履歴", async ({ page }) => {
   await page.locator(".room-preview").first().click();
@@ -744,6 +775,42 @@ test("アクセシビリティ：ホームと主要画面", async ({ page }) => 
     }
   }
 });
+test("操作領域44px以上・フォーム文字16px以上を主要画面で保つ", async ({
+  page,
+}) => {
+  test.setTimeout(120000);
+  // 標準の画面幅に加えて、モバイルでは最小の320px幅も確認する。
+  const widths = [page.viewportSize()!.width];
+  if (widths[0] < 768) widths.push(320);
+  for (const width of widths) {
+    await page.setViewportSize({ width, height: page.viewportSize()!.height });
+    for (const path of [
+      "/",
+      "/people",
+      "/people/misaki",
+      "/rooms",
+      "/rooms/dm-misaki",
+      "/talks",
+      "/talks/t1",
+      "/notes",
+      "/notes/n1",
+      "/consult",
+      "/profile",
+    ]) {
+      await page.goto(path);
+      await expect(page.locator("main h1")).toBeVisible();
+      await expect(page.locator("main > div").first()).toHaveCSS(
+        "opacity",
+        "1",
+      );
+      expect(await undersizedControls(page), `${width}px ${path}`).toEqual([]);
+      expect(
+        await page.evaluate(() => document.documentElement.scrollWidth),
+        `${width}px ${path}`,
+      ).toBeLessThanOrEqual(width);
+    }
+  }
+});
 
 test("ホームから2タップで個人プロフィールと1対1の会話へ進む", async ({
   page,
@@ -780,6 +847,22 @@ test("新しい個人会話の開始・重複防止・相手ごとの履歴", as
     .getByRole("button", { name: "あかり メッセージ", exact: true })
     .click();
   await expect(page.locator(".chat-header h1")).toHaveText("あかり");
+  // 質問の例を選ぶと入力欄に入り、そのまま編集できる。
+  const examples = page.getByRole("group", { name: /^質問の例/ });
+  await expect(examples.getByRole("button")).toHaveText([
+    "渡航前に知っておけばよかったことは？",
+    "現地の学校生活で困ったことは？",
+    "保護者として準備しておくべきことは？",
+  ]);
+  await examples
+    .getByRole("button", { name: "現地の学校生活で困ったことは？" })
+    .click();
+  await expect(
+    page.getByRole("textbox", { name: "メッセージ", exact: true }),
+  ).toHaveValue("現地の学校生活で困ったことは？");
+  await expect(
+    page.getByRole("textbox", { name: "メッセージ", exact: true }),
+  ).toBeFocused();
   await page.getByRole("button", { name: "写真の話をする" }).click();
   await expect(
     page.getByRole("textbox", { name: "メッセージ", exact: true }),
@@ -925,6 +1008,37 @@ test("国籍・街・興味のある地域から相手を探し会話を始め�
     .getByRole("button", { name: "あかり メッセージ", exact: true })
     .click();
   await expect(page.locator(".chat-header h1")).toHaveText("あかり");
+});
+test("国籍が未登録で送信できないとき、入力欄への導線を表示する", async ({
+  page,
+}) => {
+  await page.evaluate(() =>
+    localStorage.setItem(
+      "machi-preview-v1",
+      JSON.stringify({ profile: { name: "テスト", nationality: "" } }),
+    ),
+  );
+  await page.goto("/rooms/dm-misaki");
+  const message = page.getByRole("textbox", {
+    name: "メッセージ",
+    exact: true,
+  });
+  await message.fill("こんにちは");
+  await page
+    .getByRole("button", { name: "メッセージを送信", exact: true })
+    .click();
+  const toast = page.getByRole("status");
+  await expect(toast).toContainText(
+    "メッセージを送るには、国籍の登録が必要です",
+  );
+  // 入力した文章は消さない。
+  await expect(message).toHaveValue("こんにちは");
+  await expect(page.locator(".message.own")).toHaveCount(0);
+  await toast
+    .getByRole("link", { name: "国籍を入力する", exact: true })
+    .click();
+  await expect(page).toHaveURL(/\/profile#profile-nationality$/);
+  await expect(page.getByLabel("国籍（必須）", { exact: true })).toBeFocused();
 });
 test("写真の形式と元ファイルのサイズを確認し不正ファイルを保存しない", async ({
   page,
@@ -1132,7 +1246,12 @@ test("Googleログインの失敗理由と再試行先を表示", async ({ page 
   await expect(page.getByRole("alert")).toHaveCount(0);
   await expect(page).toHaveURL(/\/profile$/);
   await page.goto("/profile?login=not_invited");
-  await expect(page.getByRole("alert")).toContainText("招待されたアカウント");
+  await expect(page.getByRole("alert")).toContainText(
+    "招待メールが届いたメールアドレスと同じGoogleアカウントでログインしてください",
+  );
+  await expect(page.getByRole("alert")).toContainText(
+    "招待メールに返信してお知らせください",
+  );
   for (const reason of ["__proto__", "constructor", "unknown"]) {
     await page.goto("/profile?login=" + reason);
     await expect(
