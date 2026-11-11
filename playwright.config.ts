@@ -1,4 +1,7 @@
 import { defineConfig, devices } from "@playwright/test";
+// テストは専用DB（.wrangler/test-state）で起動したサーバーだけを使う。
+// 通常開発のサーバーを再利用すると、seedが開発DBではなくテストDBを初期化するため結果がずれる。
+// 開発サーバーが同じportで起動中の場合は、止めてから実行する。
 export default defineConfig({
   testDir: "./tests",
   fullyParallel: false,
@@ -83,31 +86,31 @@ export default defineConfig({
       command:
         "npx vite preview --config vite.admin.config.ts --host 127.0.0.1 --port 4174",
       url: "http://127.0.0.1:4174",
-      reuseExistingServer: !process.env.CI,
+      reuseExistingServer: false,
       timeout: 90000,
     },
     {
-      command: "npm run admin:api",
+      command: "npm run admin:api:test",
       url: "http://127.0.0.1:8788/api/health",
-      reuseExistingServer: !process.env.CI,
+      reuseExistingServer: false,
       timeout: 90000,
     },
     {
       command: "npm run admin:dev",
       url: "http://127.0.0.1:5174",
-      reuseExistingServer: !process.env.CI,
+      reuseExistingServer: false,
       timeout: 90000,
     },
     {
-      command: "npm run api:dev",
+      command: "npm run api:test",
       url: "http://127.0.0.1:8787/api/health",
-      reuseExistingServer: !process.env.CI,
+      reuseExistingServer: false,
       timeout: 90000,
     },
     {
       command: "npm run dev",
       url: "http://127.0.0.1:5173",
-      reuseExistingServer: !process.env.CI,
+      reuseExistingServer: false,
       timeout: 90000,
     },
   ],

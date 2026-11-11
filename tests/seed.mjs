@@ -136,6 +136,21 @@ statements.push(
   "INSERT INTO providers(id,user_id,name,theme,bio,price,verified) VALUES('e2e-pstatus','e2e-pstatus','停止検証の事業者','喫茶店','停止中の新規相談を検証','相談2,000円',1)",
 );
 mkdirSync(".wrangler", { recursive: true });
+// テスト専用の保存先。通常開発の .wrangler/state のDBは初期化しない。
+const persist = ["--persist-to", ".wrangler/test-state"];
+execFileSync(
+  "node",
+  [
+    "node_modules/wrangler/bin/wrangler.js",
+    "d1",
+    "migrations",
+    "apply",
+    "DB",
+    "--local",
+    ...persist,
+  ],
+  { stdio: "pipe", env: { ...process.env, CI: "1" } },
+);
 writeFileSync(".wrangler/e2e-fixture.sql", statements.join(";\n") + ";");
 execFileSync(
   "node",
@@ -145,6 +160,7 @@ execFileSync(
     "execute",
     "DB",
     "--local",
+    ...persist,
     "--file",
     ".wrangler/e2e-fixture.sql",
   ],

@@ -72,6 +72,34 @@ npx wrangler secret put GOOGLE_CLIENT_SECRET
 
 認証は認可コード＋PKCE、state、nonce、Googleの公開鍵、issuer、audience、email_verifiedを検証します。セッションはランダム値をHttpOnly / Secure / SameSite=Lax Cookieへ入れ、DBにはそのSHA-256だけを保存します。
 
+### 本番でGoogleログインを始める手順（チェックリスト）
+
+本人のGoogle Cloud操作が必要な部分と、コマンドで済む部分を分けています。
+
+1. Google Cloud ConsoleでWebアプリ用OAuthクライアントを作り、上記の生成元・リダイレクトURIを本番とローカルの両方登録する（本人操作）。
+2. 同意画面がテスト中なら、運営アカウント（`ADMIN_EMAIL` と同じメール）と、招待する人のGoogleアカウントをテストユーザーへ追加する（本人操作）。テスト中の同意画面は登録者以外ログインできません。
+3. JSONをリポジトリ外へ保存し、`npm run auth:google -- /絶対パス/client_secret.json` でローカルへ取り込む。
+4. 本番Workerへ `npx wrangler secret put GOOGLE_CLIENT_ID` と `npx wrangler secret put GOOGLE_CLIENT_SECRET` を登録する。値はJSONの `web.client_id` / `web.client_secret`。
+5. `https://machi-community.lildayne.workers.dev/api/bootstrap` の `configured.google` が `true` になったことを確認する。
+6. `ADMIN_EMAIL` のGoogleアカウントで最初にログインする。このアカウントが運営者になるため、別のアカウントで先にログインしない。
+7. 下記の招待CLIで招待し、招待した人のログインと1対1の往復を確認する。
+
+### 招待CLI（管理ログイン保留中の招待）
+
+管理者ログインを保留したまま招待を登録するための運営用コマンドです。`invitations` テーブルだけを操作し、会員・role・セッションは作りません。招待メールは送らないため、案内は別途本人へ連絡します。
+
+```sh
+npm run invite -- --email person@example.com --remote --days 30   # 招待（1〜30日、既定30）
+npm run invite -- --list --remote                                 # 招待一覧
+npm run invite -- --revoke person@example.com --remote            # 未使用の招待を取消
+npm run invite -- --email person@example.com --remote --dry-run   # 実行するSQLだけ表示
+```
+
+- `--local` / `--remote` のどちらか一方が必須です。
+- `--remote` は、`npx wrangler whoami` のアカウントに `wrangler.jsonc` の `account_id` が含まれる場合だけ実行し、書き込み前に確認を求めます（`--yes` で省略）。
+- メールは小文字に正規化してから登録します。Googleアカウントのメールと一致しないとログインできません。
+- 操作記録は `.wrangler/invite-log.jsonl`（Git対象外）に追記します。
+
 ### ローカルでGoogleログインを有効にする
 
 現在のローカル版はGoogleのクライアントID・シークレットが未設定です。Google Cloud側の本人確認を完了してから、Webアプリ用のOAuthクライアントを作成します。クライアント作成画面で次を登録してください。
