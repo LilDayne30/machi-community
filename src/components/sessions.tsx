@@ -1121,7 +1121,7 @@ export function AdvisorProfileBlock() {
   useEffect(() => {
     if (me) setForm(me);
   }, [me]);
-  if (app.mode === "production" && !app.user) return null;
+  if (!app.user) return null;
   return (
     <section className="sessions-form glass" aria-labelledby="advisor-block">
       <h2 id="advisor-block">有料相談</h2>
