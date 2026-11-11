@@ -19,6 +19,13 @@ import { emptyProfile, type CommunityMember } from "../src/lib/data";
 import { MAX_AVATAR_BYTES } from "../src/lib/profile";
 import { readPhoto, validProfileJpeg } from "./photos";
 import {
+  registerSessions,
+  handleSessionPayment,
+  sessionsCron,
+  publicAdvisor,
+  MAX_DOC_BYTES,
+} from "./sessions";
+import {
   connectionError,
   getRegion,
   type RegionConnection,
@@ -214,7 +221,9 @@ app.use("/api/*", async (c, next) => {
   const limit =
     c.req.path === "/api/profile/photo" && c.req.method === "PUT"
       ? MAX_AVATAR_BYTES
-      : 20000;
+      : c.req.path === "/api/advisor/document" && c.req.method === "PUT"
+        ? MAX_DOC_BYTES
+        : 20000;
   if (Number(c.req.header("content-length") || 0) > limit)
     return c.json({ error: "リクエストが大きすぎます" }, 413);
   if (
@@ -312,6 +321,16 @@ app.get("/api/bootstrap", async (c) => {
       "SELECT p.id,p.name,p.theme,p.bio,p.price FROM providers p JOIN users u ON u.id=p.user_id WHERE p.verified=1 AND u.account_status='active'",
     )
     .all<any>();
+  const advisors = u
+    ? (
+        await db
+          .prepare(
+            "SELECT a.* FROM advisor_profiles a JOIN users u ON u.id=a.user_id WHERE a.status='approved' AND a.accepting=1 AND u.account_status='active' AND a.user_id!=? LIMIT 200",
+          )
+          .bind(u.id)
+          .all<any>()
+      ).results.map(publicAdvisor)
+    : [];
   const rooms = [];
   const people = u
     ? (
@@ -418,6 +437,7 @@ app.get("/api/bootstrap", async (c) => {
     notes,
     rooms,
     people,
+    advisors,
     bookings,
     consultations,
     providers: ps.results,
@@ -1248,6 +1268,13 @@ app.post("/api/stripe/webhook", async (c) => {
     return c.json({ received: true });
   if (event.type === "checkout.session.completed") {
     const s = event.data.object as Stripe.Checkout.Session;
+    if (await handleSessionPayment(db, s, now(), queue, c.env.APP_ORIGIN)) {
+      await db
+        .prepare("INSERT OR IGNORE INTO stripe_events(id,type) VALUES(?,?)")
+        .bind(event.id, event.type)
+        .run();
+      return c.json({ received: true });
+    }
     const b = await db
       .prepare(
         "SELECT b.*,u.email,t.cancelled_at FROM bookings b JOIN users u ON u.id=b.user_id JOIN talks t ON t.id=b.talk_id WHERE b.id=?",
@@ -2029,6 +2056,19 @@ app.onError((e, c) => {
     500,
   );
 });
+registerSessions(app, {
+  mustUser,
+  mustAdmin,
+  json,
+  stripe,
+  queue,
+  audit,
+  isBlocked,
+  uid,
+  now,
+  safeText,
+  sha256,
+});
 app.all("/api/*", (c) => c.json({ error: "APIが見つかりません" }, 404));
 app.all("*", (c) => c.env.ASSETS.fetch(c.req.raw));
 export default {
@@ -2078,6 +2118,12 @@ export default {
             /* retry, idempotency prevents duplicate refunds */
           }
         }
+        await sessionsCron(env.DB, now(), async (pi, key) => {
+          await stripe(env).refunds.create(
+            { payment_intent: pi },
+            { idempotencyKey: key },
+          );
+        });
         await deliverEmails(env);
       })(),
     );

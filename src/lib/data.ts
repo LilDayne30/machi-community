@@ -112,6 +112,29 @@ export type Profile = {
   connections: RegionConnection[];
   visitRegionId: string;
 };
+export type AdvisorDetails = {
+  city: string;
+  school: string;
+  schoolPublic: boolean;
+  stay: string;
+  agentUsed: "" | "yes" | "no";
+  costNote: string;
+  languageLevel: string;
+  hard: string;
+  good: string;
+  current: string;
+  career: string;
+  languages: string;
+  links: string[];
+};
+export type PublicAdvisor = {
+  userId: string;
+  accepting: boolean;
+  availability: string;
+  verifiedAt: string | null;
+  details: Partial<AdvisorDetails>;
+  price: number;
+};
 export type Bootstrap = {
   mode: "preview" | "production";
   user: null | { id: string; name: string; role: string };
@@ -131,6 +154,7 @@ export type Bootstrap = {
     initial?: string;
     color?: string;
   }[];
+  advisors?: PublicAdvisor[];
   configured: { google: boolean; stripe: boolean };
 };
 export const photos = {

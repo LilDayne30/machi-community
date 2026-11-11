@@ -19,6 +19,7 @@ import {
   studyLevels,
 } from "../lib/participation";
 import { Avatar, Heading } from "./ui";
+import { SessionNotice } from "./sessions";
 
 export function Home() {
   const { data } = useApp();
@@ -38,6 +39,7 @@ export function Home() {
   return (
     <div className="home-hub">
       <Heading eyebrow="HOME" title="ホーム" />
+      <SessionNotice />
       <div className="home-hub-layout">
         <section
           className={`home-discover glass home-discover--${axis}`}

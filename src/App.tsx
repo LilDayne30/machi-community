@@ -27,6 +27,22 @@ import {
   EventDetailPage as TalkDetail,
 } from "./components/events";
 import { Home } from "./components/home";
+import {
+  AdvisorApply,
+  AdvisorBadge,
+  AdvisorEarnings,
+  AdvisorProfileBlock,
+  AdvisorPublicInfo,
+  ConsultLink,
+  LegalTerms,
+  LegalTokushoho,
+  MessageBody,
+  RoomConsultButton,
+  SessionDetail,
+  SessionNew,
+  SessionPaid,
+  SessionsList,
+} from "./components/sessions";
 import { VisitStatus } from "./components/visit-status";
 import { useGlassEffects } from "./components/useGlassEffects";
 import {
@@ -306,6 +322,20 @@ export default function App() {
                   <Route path="/rooms/:id" element={<RoomDetail />} />
                   <Route path="/people" element={<Members />} />
                   <Route path="/people/:id" element={<MemberDetail />} />
+                  <Route
+                    path="/people/:id/session/new"
+                    element={<SessionNew />}
+                  />
+                  <Route path="/sessions" element={<SessionsList />} />
+                  <Route path="/sessions/:id" element={<SessionDetail />} />
+                  <Route path="/sessions/:id/paid" element={<SessionPaid />} />
+                  <Route path="/advisor/apply" element={<AdvisorApply />} />
+                  <Route
+                    path="/advisor/earnings"
+                    element={<AdvisorEarnings />}
+                  />
+                  <Route path="/legal/tokushoho" element={<LegalTokushoho />} />
+                  <Route path="/legal/terms" element={<LegalTerms />} />
                   <Route path="/notes" element={<NotesPage />} />
                   <Route path="/notes/:id" element={<NoteDetail />} />
                   <Route path="/consult" element={<Consult />} />
@@ -617,6 +647,7 @@ function MemberCard({
   person: CommunityMember;
   index?: number;
 }) {
+  const isAdv = !!useApp().data.advisors?.some((a) => a.userId === person.id);
   return (
     <motion.article
       className="person-card glass"
@@ -665,6 +696,7 @@ function MemberCard({
           {person.city && " · " + person.city}
         </span>
       </div>
+      {isAdv && <AdvisorBadge />}
       <ParticipationSummary person={person} compact />
       <ResidenceLinks connections={person.connections} compact />
       <div className="person-interests">
@@ -713,7 +745,8 @@ function Members() {
   const axis = params.get("axis") || "",
     studyTopic = params.get("topic") || "",
     studyPlace = params.get("studyPlace") || "",
-    localKind = params.get("localKind") || "";
+    localKind = params.get("localKind") || "",
+    paidOnly = params.get("paid") === "1";
   const nationality = params.get("nationality") || "",
     region = params.get("region") || "",
     place = params.get("place") || "",
@@ -753,7 +786,8 @@ function Members() {
   const list = data.people.filter(
     (p) =>
       matchesMember(p, query, nationality, region, theme, place, status) &&
-      matchesParticipation(p, axis, studyTopic, studyPlace, localKind),
+      matchesParticipation(p, axis, studyTopic, studyPlace, localKind) &&
+      (!paidOnly || !!data.advisors?.some((a) => a.userId === p.id)),
   );
   return (
     <>
@@ -964,6 +998,14 @@ function Members() {
             留学した場所で探せます。経験は本人の申告です。
           </p>
         )}
+        <label className="check-row">
+          <input
+            type="checkbox"
+            checked={paidOnly}
+            onChange={(e) => filter("paid", e.target.checked ? "1" : "")}
+          />
+          <span>有料相談できる人</span>
+        </label>
         <div className="filter-row">
           {(axis === "alumni"
             ? []
@@ -1031,6 +1073,7 @@ function MemberDetail() {
     (r) => r.kind === "direct" && r.peer?.id === id,
   );
   const person = data.people.find((p) => p.id === id) || conversation?.peer;
+  const advisor = data.advisors?.find((a) => a.userId === id);
   if (!person)
     return (
       <Empty>
@@ -1083,6 +1126,7 @@ function MemberDetail() {
           ))}
         </div>
         <ParticipationSummary person={person} />
+        {advisor && <AdvisorPublicInfo advisor={advisor} />}
         <section className="member-regions">
           <h2>地域との関わり</h2>
           {person.connections.length ? (
@@ -1120,6 +1164,7 @@ function MemberDetail() {
             </>
           )}
         </dl>
+        {advisor?.accepting && <ConsultLink id={person.id} />}
         <ConversationButton person={person} blocked={conversation?.blocked} />
         <small>
           <LockKeyhole size={13} />
@@ -1549,6 +1594,7 @@ function RoomDetail() {
             <CircleHelp size={19} />
           </button>
         </div>
+        {direct && <RoomConsultButton peerId={room.peer?.id} />}
         <div className="chat-messages">
           <div className="chat-date">
             {direct ? (
@@ -1606,7 +1652,7 @@ function RoomDetail() {
                         ?.body.slice(0, 50) || "メッセージへの返信"}
                     </div>
                   )}
-                  <div className="message-bubble">{m.body}</div>
+                  <MessageBody body={m.body} />
                   <div className="message-actions">
                     <button onClick={() => setReply(m.id)}>返信する</button>
                     <button
@@ -2670,6 +2716,7 @@ function ProfilePage() {
           </button>
         </div>
       </form>
+      <AdvisorProfileBlock />
       <div className="account-actions">
         {(data.mode === "preview" || data.user?.role === "admin") && (
           <Link to="/admin" className="button subtle">
