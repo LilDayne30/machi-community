@@ -363,6 +363,51 @@ describe("経験者の確認申請", () => {
         .status,
     ).toBe(404);
   });
+  it("運営が外部リンクを差し戻し、会員ごとの実績を確認できる", async () => {
+    await approveAdvisor();
+    await call("advisor", "PUT", "/api/advisor/me", {
+      details: { links: ["https://example.com/a"] },
+      availability: "",
+      accepting: true,
+    });
+    expect(
+      (
+        await call("admin", "PATCH", "/api/admin/advisors/advisor", {
+          action: "clear_links",
+          reason: "",
+        })
+      ).status,
+    ).toBe(400);
+    expect(
+      (
+        await call("admin", "PATCH", "/api/admin/advisors/advisor", {
+          action: "clear_links",
+          reason: "無関係なリンク",
+        })
+      ).status,
+    ).toBe(200);
+    expect(
+      (await call("advisor", "GET", "/api/advisor/me")).json.details.links,
+    ).toEqual([]);
+    expect(
+      (
+        await call("advisor", "PUT", "/api/advisor/me", {
+          details: { links: ["https://example.com/a"] },
+          availability: "",
+          accepting: true,
+        })
+      ).status,
+    ).toBe(200);
+    const s = await call("admin", "GET", "/api/admin/advisors/advisor/summary");
+    expect(s.json.advisor).toMatchObject({
+      status: "approved",
+      verifiedBy: "運営",
+    });
+    expect(
+      (await call("client", "GET", "/api/admin/advisors/advisor/summary"))
+        .status,
+    ).toBe(404);
+  });
   it("本人は承認状態を書き換えられない", async () => {
     await approveAdvisor();
     await call("admin", "PATCH", "/api/admin/advisors/advisor", {

@@ -824,7 +824,13 @@ export function registerSessions(app: any, d: Deps) {
     const p = await json(
       c,
       z.object({
-        action: z.enum(["approve", "reject", "suspend", "resume"]),
+        action: z.enum([
+          "approve",
+          "reject",
+          "suspend",
+          "resume",
+          "clear_links",
+        ]),
         reason: z.string().trim().max(300).default(""),
       }),
     );
@@ -833,6 +839,23 @@ export function registerSessions(app: any, d: Deps) {
       .bind(id)
       .first<any>();
     if (!a) fail(404, "経験者が見つかりません");
+    if (p.action === "clear_links") {
+      if (!p.reason) fail(400, "差し戻す理由を入力してください");
+      const cur = await dbOf(c)
+        .prepare("SELECT details FROM advisor_profiles WHERE user_id=?")
+        .bind(id)
+        .first<any>();
+      const d = parse<any>(cur?.details || "{}", {});
+      d.links = [];
+      await dbOf(c)
+        .prepare(
+          "UPDATE advisor_profiles SET details=?,review_reason=? WHERE user_id=?",
+        )
+        .bind(JSON.stringify(d), p.reason, id)
+        .run();
+      await audit(dbOf(c), u, "advisor_links_cleared", id);
+      return c.json({ ok: true });
+    }
     const rule: Record<string, [string[], string]> = {
       approve: [["pending"], "approved"],
       reject: [["pending"], "rejected"],
@@ -858,6 +881,41 @@ export function registerSessions(app: any, d: Deps) {
     await db.batch(stmts);
     await audit(db, u, "advisor_" + p.action, id);
     return c.json({ ok: true });
+  });
+  app.get("/api/admin/advisors/:id/summary", async (c: any) => {
+    mustAdmin(c);
+    const id = c.req.param("id");
+    await sweepSessions(dbOf(c), now());
+    const a = await dbOf(c)
+      .prepare(
+        "SELECT a.status,a.accepting,a.verified_at,v.name verified_by_name FROM advisor_profiles a LEFT JOIN users v ON v.id=a.verified_by WHERE a.user_id=?",
+      )
+      .bind(id)
+      .first<any>();
+    const as = await dbOf(c)
+      .prepare(
+        "SELECT status,count(*) n,sum(advisor_amount) total FROM paid_sessions WHERE advisor_id=? GROUP BY status",
+      )
+      .bind(id)
+      .all<any>();
+    const cl = await dbOf(c)
+      .prepare(
+        "SELECT status,count(*) n,sum(amount) total FROM paid_sessions WHERE client_id=? GROUP BY status",
+      )
+      .bind(id)
+      .all<any>();
+    return c.json({
+      advisor: a
+        ? {
+            status: a.status,
+            accepting: !!a.accepting,
+            verifiedAt: a.verified_at,
+            verifiedBy: a.verified_by_name,
+          }
+        : null,
+      asAdvisor: as.results,
+      asClient: cl.results,
+    });
   });
   app.get("/api/admin/sessions", async (c: any) => {
     mustAdmin(c);

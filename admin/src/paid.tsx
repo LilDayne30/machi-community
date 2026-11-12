@@ -303,10 +303,23 @@ export function PaidSessions({ setDialog, notify }: Ctx) {
     "/sessions",
   );
   const [filter, setFilter] = useState("all"),
-    [open, setOpen] = useState<any>(null);
+    [open, setOpen] = useState<any>(null),
+    [from, setFrom] = useState(""),
+    [to, setTo] = useState("");
   const all = data?.sessions || [];
+  const day = (s?: string | null) => {
+    if (!s) return "";
+    const d = new Date(s.includes("T") ? s : s.replace(" ", "T") + "Z");
+    return isNaN(+d)
+      ? ""
+      : new Date(+d + 9 * 3600e3).toISOString().slice(0, 10);
+  };
   const list = all
     .filter((s) => filter === "all" || s.status === filter)
+    .filter((s) => {
+      const d = day(s.createdAt);
+      return (!from || (d && d >= from)) && (!to || (d && d <= to));
+    })
     .sort(
       (a, b) =>
         Number(b.status === "disputed") - Number(a.status === "disputed"),
@@ -371,6 +384,31 @@ export function PaidSessions({ setDialog, notify }: Ctx) {
                   </option>
                 ))}
               </select>
+            </label>
+            <label className="status-filter">
+              <span className="sr-only">申込日（開始）</span>
+              <input
+                type="date"
+                value={from}
+                max={to || undefined}
+                onChange={(e) => setFrom(e.target.value)}
+              />
+            </label>
+            <span
+              className="subtle"
+              aria-hidden="true"
+              style={{ alignSelf: "center" }}
+            >
+              〜
+            </span>
+            <label className="status-filter">
+              <span className="sr-only">申込日（終了）</span>
+              <input
+                type="date"
+                value={to}
+                min={from || undefined}
+                onChange={(e) => setTo(e.target.value)}
+              />
             </label>
             <button className="btn" onClick={reload}>
               <RefreshCw size={16} />
@@ -609,6 +647,144 @@ export function PaidSummaryCard() {
           )}
         </>
       )}
+    </Box>
+  );
+}
+
+const yenN = (r?: { n: number; total: number }) =>
+  r ? `${r.n}件・${yen(r.total)}` : "0件";
+
+/** 会員詳細に表示する有料相談の状況。 */
+export function MemberPaidInfo({ id }: { id: string }) {
+  const { data, error, loading, reload } = useLoad<{
+    advisor: {
+      status: string;
+      accepting: number | boolean;
+      verifiedAt?: string | null;
+      verifiedBy?: string | null;
+    } | null;
+    asAdvisor: { status: string; n: number; total: number }[];
+    asClient: { status: string; n: number; total: number }[];
+  }>("/advisors/" + encodeURIComponent(id) + "/summary");
+  if (loading || error)
+    return <State loading={loading} error={error} reload={reload} />;
+  if (!data) return null;
+  const a = data.advisor;
+  const sum = (l: { n: number; total: number }[]) => ({
+    n: l.reduce((x, r) => x + r.n, 0),
+    total: l.reduce((x, r) => x + r.total, 0),
+  });
+  const find = (
+    l: { status: string; n: number; total: number }[],
+    st: string[],
+  ) => sum(l.filter((r) => st.includes(r.status)));
+  const done = find(data.asAdvisor, ["completed"]);
+  const settled = find(data.asAdvisor, ["settled"]);
+  const disputed = find(data.asAdvisor, ["disputed", "refund_pending"]);
+  const clientAll = sum(data.asClient);
+  return (
+    <div className="notice" style={{ marginTop: 12 }}>
+      <strong>有料相談</strong>
+      {!a ? (
+        <p style={{ margin: "4px 0" }}>有料相談の申請なし</p>
+      ) : (
+        <>
+          <p style={{ margin: "4px 0" }}>
+            承認状態：
+            <Tag cls={advisorBadge[a.status] || a.status}>
+              {advisorLabel[a.status] || a.status}
+            </Tag>
+            {a.accepting ? "（受付中）" : ""}
+          </p>
+          <p style={{ margin: "4px 0" }}>
+            確認日：{when(a.verifiedAt)}／確認者：{a.verifiedBy || "—"}
+          </p>
+          <p style={{ margin: "4px 0" }}>
+            経験者として：全{sum(data.asAdvisor).n}件（実施済み {yenN(done)}
+            ／精算済み {yenN(settled)}／問題・返金対応 {yenN(disputed)}）
+          </p>
+        </>
+      )}
+      <p style={{ margin: "4px 0" }}>利用者として：{yenN(clientAll)}</p>
+    </div>
+  );
+}
+
+/** 経験者の外部リンク一覧と差し戻し。 */
+export function PaidAdvisorLinks({ setDialog, notify }: Ctx) {
+  const { data, error, loading, reload } = useLoad<{ advisors: any[] }>(
+    "/advisors",
+  );
+  const list = (data?.advisors || []).filter(
+    (a) => Array.isArray(a.details?.links) && a.details.links.length,
+  );
+  const clear = (a: any) =>
+    setDialog({
+      title: "外部リンクを差し戻す",
+      description: `${a.name}さんの外部リンクをすべて削除します。理由は記録されます。`,
+      fields: [
+        {
+          name: "reason",
+          label: "差し戻しの理由",
+          type: "textarea",
+          required: true,
+          maxLength: 300,
+        },
+      ],
+      submit: "差し戻す",
+      danger: true,
+      onSubmit: async (v) => {
+        await api("/advisors/" + a.user_id, "PATCH", {
+          action: "clear_links",
+          reason: v.reason || "",
+        });
+        notify("保存しました");
+        await reload();
+      },
+    });
+  return (
+    <Box
+      title="経験者の外部リンク"
+      aside={
+        <button className="btn" onClick={reload}>
+          <RefreshCw size={16} />
+          更新
+        </button>
+      }
+    >
+      <State loading={loading} error={error} reload={reload} />
+      {data && !list.length && (
+        <p className="subtle">外部リンクを登録している経験者はいません</p>
+      )}
+      {list.map((a) => (
+        <div
+          key={a.user_id}
+          style={{
+            display: "flex",
+            justifyContent: "space-between",
+            gap: 12,
+            flexWrap: "wrap",
+            padding: "8px 0",
+          }}
+        >
+          <div style={{ minWidth: 0 }}>
+            <strong>{a.name}</strong>
+            <ul style={{ margin: "4px 0", paddingLeft: 18 }}>
+              {a.details.links.map((u: string) => (
+                <li key={u} style={{ overflowWrap: "anywhere" }}>
+                  <a href={u} target="_blank" rel="noopener noreferrer">
+                    {u}
+                    <span className="sr-only">（新しいタブで開く）</span>
+                  </a>
+                </li>
+              ))}
+            </ul>
+          </div>
+          <button className="btn btn-danger" onClick={() => clear(a)}>
+            差し戻す
+          </button>
+        </div>
+      ))}
     </Box>
   );
 }

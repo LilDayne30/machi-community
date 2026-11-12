@@ -39,6 +39,8 @@ import {
   PaidSessions,
   PaidPayouts,
   PaidSummaryCard,
+  MemberPaidInfo,
+  PaidAdvisorLinks,
 } from "./paid";
 const money = (n: number) =>
   new Intl.NumberFormat("ja-JP", { style: "currency", currency: "JPY" }).format(
@@ -1225,6 +1227,7 @@ export default function App() {
                                         </strong>
                                       </div>
                                       <p>{m.profile.bio}</p>
+                                      <MemberPaidInfo id={m.id} />
                                       {m.status_reason && (
                                         <p className="notice">
                                           変更理由：{m.status_reason}
@@ -1903,6 +1906,7 @@ export default function App() {
                           filter === "all" ||
                           (n.published ? "published" : "draft") === filter,
                       ).length && <Empty />}
+                    <PaidAdvisorLinks setDialog={setDialog} notify={notify} />
                   </>
                 )}
                 {current.path === "/emails" && (
