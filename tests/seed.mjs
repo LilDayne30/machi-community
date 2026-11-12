@@ -20,6 +20,9 @@ for (const table of [
   "room_members",
   "messages",
   "bookings",
+  "paid_sessions",
+  "advisor_documents",
+  "advisor_profiles",
   "notes",
   "providers",
   "admin_sessions",
@@ -45,6 +48,9 @@ for (const [id, name, role] of [
   ["ui", "接続テスト会員", "member"],
   ["da", "個人会話A", "member"],
   ["photo", "写真API会員", "member"],
+  ["sadv", "経験者テストさん", "member"],
+  ["scli", "相談者テストさん", "member"],
+  ["spend", "申請中テストさん", "member"],
   ["pui", "写真と地域のテストさん", "member"],
   ["missing", "国籍未登録会員", "member"],
   ["region", "地域APIの会員", "member"],
@@ -81,6 +87,13 @@ for (const [id, name, role] of [
     `INSERT INTO sessions(token_hash,user_id,expires_at) VALUES(${q(hash("e2e-" + id))},${q("e2e-" + id)},unixepoch()+86400)`,
   );
 }
+const PNG =
+  "89504e470d0a1a0a0000000d49484452000000010000000108060000001f15c4890000000d49444154789c6360000002000001e221bc330000000049454e44ae426082";
+statements.push(
+  `INSERT INTO advisor_profiles(user_id,status,accepting,availability,details,birth_date,terms_agreed_at,applied_at,verified_at,verified_by) VALUES('e2e-sadv','approved',1,'土日の夜',${q(JSON.stringify({ school: "秘密大学", schoolPublic: false, city: "台北" }))},'1995-04-01',CURRENT_TIMESTAMP,CURRENT_TIMESTAMP,CURRENT_TIMESTAMP,'e2e-admin')`,
+  `INSERT INTO advisor_profiles(user_id,status,accepting,availability,details,birth_date,terms_agreed_at,applied_at) VALUES('e2e-spend','pending',0,'平日の夜',${q(JSON.stringify({ school: "申請中大学", schoolPublic: false, city: "ソウル" }))},'1996-05-02',CURRENT_TIMESTAMP,CURRENT_TIMESTAMP)`,
+  `INSERT INTO advisor_documents(user_id,mime,data) VALUES('e2e-spend','image/png',X'${PNG}')`,
+);
 for (const id of ["admin", "a"])
   statements.push(
     `INSERT INTO admin_sessions(token_hash,user_id,expires_at) VALUES(${q(hash("e2e-admin-" + id))},${q("e2e-" + id)},unixepoch()+86400)`,
