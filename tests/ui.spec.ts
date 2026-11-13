@@ -370,7 +370,7 @@ test("本番の相談画面：事業者が未登録でも案内とアクセシ�
     page.getByRole("heading", { name: "留学エージェントに相談", exact: true }),
   ).toBeVisible();
   await expect(
-    page.getByText("相談を受付中の事業者はいません", { exact: true }),
+    page.getByText("相談を受付中のエージェントはいません", { exact: true }),
   ).toBeVisible();
   await expect(page.locator(".provider-card")).toHaveCount(0);
   await expect(page.locator(".page-scene")).toHaveCSS("opacity", "1");
@@ -623,15 +623,13 @@ test("プロ相談・明示的な共有・送信履歴", async ({ page }) => {
     .getByLabel("依頼内容", { exact: true })
     .fill("京都に再訪します。喫茶店めぐりを2人で相談したいです。");
   await page
-    .getByRole("combobox", { name: "予算", exact: true })
+    .getByRole("combobox", { name: "留学の予算（目安）", exact: true })
     .selectOption("100〜300万円");
   await page.getByLabel("希望日", { exact: true }).fill("2026-11-20");
   await expect(page.locator(".share-field input")).toHaveCount(1);
   await page.getByLabel("自分の共有してよい投稿です").check();
   await page
-    .getByLabel(
-      "相談先と運営へ上記の内容を共有することに同意します。料金は事業者の回答後に確認します。",
-    )
+    .getByLabel("相談先と運営へ上記の内容を共有することに同意します。")
     .check();
   await page.getByRole("button", { name: "相談を送る", exact: true }).click();
   await expect(

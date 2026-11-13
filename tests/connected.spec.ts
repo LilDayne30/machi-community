@@ -213,8 +213,8 @@ test("実API：同意したプロ相談を保存し、宛先の事業者へ開�
     .getByLabel("依頼内容", { exact: true })
     .fill("再訪の喫茶店めぐりについて相談する操作テストです");
   await page
-    .getByRole("combobox", { name: "予算", exact: true })
-    .selectOption("相談したい");
+    .getByRole("combobox", { name: "留学の予算（目安）", exact: true })
+    .selectOption("まだ決めていない");
   await page.getByLabel("希望日", { exact: true }).fill("2026-11-20");
   await page.getByLabel("共有範囲を選べる自分の投稿です").check();
   await page
