@@ -609,7 +609,11 @@ export default function App() {
         { name: "name", label: "担当者名", maxLength: 100 },
         { name: "email", label: "登録済み会員のメール", type: "email" },
         { name: "theme", label: "話せるテーマ", maxLength: 100 },
-        { name: "price", label: "料金の表示", maxLength: 100 },
+        {
+          name: "price",
+          label: "料金メモ（利用者には表示しません）",
+          maxLength: 100,
+        },
         {
           name: "bio",
           label: "事業者の紹介",

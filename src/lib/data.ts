@@ -530,7 +530,7 @@ export const providers = [
     initial: "サ",
     theme: "カナダ・オーストラリアの高校留学",
     bio: "高校留学の学校選び、ホームステイ、出発前の準備まで相談できます。",
-    price: "初回相談 無料",
+    price: "相談無料",
     color: "#e5dbce",
   },
   {
@@ -540,7 +540,7 @@ export const providers = [
     initial: "見",
     theme: "アメリカ・イギリスの大学進学",
     bio: "出願書類、英語試験、奨学金の探し方を相談できます。",
-    price: "初回相談 無料 / 出願サポート ¥50,000〜",
+    price: "相談無料",
     color: "#dce4d9",
   },
 ];

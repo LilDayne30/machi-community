@@ -218,9 +218,7 @@ test("実API：同意したプロ相談を保存し、宛先の事業者へ開�
   await page.getByLabel("希望日", { exact: true }).fill("2026-11-20");
   await page.getByLabel("共有範囲を選べる自分の投稿です").check();
   await page
-    .getByLabel(
-      "相談先と運営へ上記の内容を共有することに同意します。料金は事業者の回答後に確認します。",
-    )
+    .getByLabel("相談先と運営へ上記の内容を共有することに同意します。")
     .check();
   await page.getByRole("button", { name: "相談を送る", exact: true }).click();
   await expect(

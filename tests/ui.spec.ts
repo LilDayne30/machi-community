@@ -624,7 +624,7 @@ test("プロ相談・明示的な共有・送信履歴", async ({ page }) => {
     .fill("京都に再訪します。喫茶店めぐりを2人で相談したいです。");
   await page
     .getByRole("combobox", { name: "予算", exact: true })
-    .selectOption("3,000〜5,000円");
+    .selectOption("100〜300万円");
   await page.getByLabel("希望日", { exact: true }).fill("2026-11-20");
   await expect(page.locator(".share-field input")).toHaveCount(1);
   await page.getByLabel("自分の共有してよい投稿です").check();
