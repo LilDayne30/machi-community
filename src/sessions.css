@@ -1,0 +1,206 @@
+/* Paid consultations (phase 1) */
+.sessions-form,
+.sessions-detail,
+.sessions-table {
+  display: grid;
+  gap: 14px;
+  padding: 22px;
+  border-radius: 24px;
+  margin-bottom: 18px;
+  max-width: 720px;
+  min-width: 0;
+}
+.sessions-form form,
+.sessions-accept {
+  display: grid;
+  gap: 14px;
+}
+.sessions-form h2,
+.sessions-detail h2 {
+  margin: 0;
+  font-size: 17px;
+}
+.sessions-note {
+  margin: 0;
+  padding: 10px 14px;
+  border-radius: 14px;
+  background: #eef4ee;
+  color: var(--ink);
+  font-size: 14px;
+  line-height: 1.6;
+}
+.sessions-error {
+  margin: 0;
+  color: #a33b32;
+  font-size: 14px;
+}
+.sessions-fieldset {
+  border: 1px solid var(--line);
+  border-radius: 16px;
+  padding: 12px 14px;
+  display: grid;
+  gap: 10px;
+  min-width: 0;
+}
+.sessions-rules ul {
+  margin: 8px 0;
+  padding-left: 20px;
+  line-height: 1.7;
+  font-size: 14px;
+}
+.check-row {
+  display: flex;
+  align-items: flex-start;
+  gap: 10px;
+  min-height: 44px;
+  align-items: center;
+}
+.check-row input {
+  width: 20px;
+  height: 20px;
+  flex: none;
+}
+.sessions-detail dl,
+.sessions-public dl {
+  display: grid;
+  gap: 4px 16px;
+  margin: 0;
+}
+.sessions-detail dt,
+.sessions-public dt {
+  color: var(--muted);
+  font-size: 13px;
+  margin-top: 8px;
+}
+.sessions-detail dd,
+.sessions-public dd {
+  margin: 0;
+  overflow-wrap: anywhere;
+}
+.pre {
+  white-space: pre-wrap;
+}
+.slot-list {
+  margin: 0;
+  padding-left: 18px;
+}
+.sessions-confirm {
+  display: grid;
+  gap: 10px;
+  padding: 16px;
+  border: 1px solid #d9b7b2;
+  border-radius: 16px;
+}
+.sessions-foot {
+  display: flex;
+  gap: 6px;
+  align-items: center;
+}
+.sessions-tabs {
+  display: flex;
+  gap: 8px;
+  margin-bottom: 14px;
+  flex-wrap: wrap;
+}
+.sessions-tabs button {
+  min-height: 44px;
+  padding: 0 16px;
+  border-radius: 999px;
+  border: 1px solid var(--line);
+  background: #fff9;
+}
+.sessions-tabs button.selected {
+  background: var(--green);
+  color: #fff;
+}
+.sessions-list {
+  list-style: none;
+  padding: 0;
+  margin: 0;
+  display: grid;
+  gap: 10px;
+  max-width: 720px;
+}
+.session-row {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 8px 12px;
+  padding: 16px 18px;
+  border-radius: 20px;
+  color: inherit;
+  text-decoration: none;
+}
+.session-row-main {
+  display: grid;
+  gap: 2px;
+  flex: 1 1 180px;
+  min-width: 0;
+}
+.session-row-main small {
+  color: var(--muted);
+  overflow-wrap: anywhere;
+}
+.session-badge {
+  display: inline-block;
+  padding: 3px 10px;
+  border-radius: 999px;
+  background: #e6eee6;
+  color: var(--green);
+  font-size: 12px;
+  font-weight: 700;
+}
+.session-badge.urgent {
+  background: #f6e2c9;
+  color: #7a4a12;
+}
+.session-badge.advisor {
+  background: var(--green);
+  color: #fff;
+}
+.session-card {
+  display: grid;
+  gap: 4px;
+}
+.session-card a {
+  color: inherit;
+  text-decoration: underline;
+}
+.session-room-cta {
+  padding: 8px 16px;
+}
+.session-notice {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 14px 18px;
+  border-radius: 20px;
+  margin-bottom: 14px;
+  color: inherit;
+  text-decoration: none;
+}
+.session-notice > span:nth-of-type(1) {
+  flex: 1;
+}
+.sessions-table {
+  overflow-x: auto;
+}
+.sessions-table table {
+  border-collapse: collapse;
+  width: 100%;
+  font-size: 14px;
+}
+.sessions-table th,
+.sessions-table td {
+  padding: 8px 10px;
+  text-align: left;
+  white-space: nowrap;
+  border-bottom: 1px solid var(--line);
+}
+@media (max-width: 480px) {
+  .sessions-form,
+  .sessions-detail,
+  .sessions-table {
+    padding: 16px;
+  }
+}

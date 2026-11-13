@@ -34,6 +34,14 @@ import {
   type AdminData,
   type Row,
 } from "./model";
+import {
+  PaidAdvisors,
+  PaidSessions,
+  PaidPayouts,
+  PaidSummaryCard,
+  MemberPaidInfo,
+  PaidAdvisorLinks,
+} from "./paid";
 const money = (n: number) =>
   new Intl.NumberFormat("ja-JP", { style: "currency", currency: "JPY" }).format(
     n,
@@ -106,6 +114,9 @@ const nav: { path: string; label: string; icon: LucideIcon }[] = [
   { path: "/talks", label: "トーク・小部屋", icon: CalendarDays },
   { path: "/bookings", label: "予約・返金", icon: ClipboardList },
   { path: "/reports", label: "通報", icon: ShieldCheck },
+  { path: "/advisors", label: "経験者の審査", icon: ShieldCheck },
+  { path: "/sessions", label: "有料相談", icon: MessageCircle },
+  { path: "/payouts", label: "経験者への支払い", icon: Wallet },
   { path: "/consultations", label: "プロ相談", icon: MessageCircle },
   { path: "/providers", label: "事業者", icon: BookOpen },
   { path: "/notes", label: "現地メモ", icon: BookOpen },
@@ -970,6 +981,7 @@ export default function App() {
                         );
                       })}
                     </div>
+                    <PaidSummaryCard />
                     <div className="overview-grid">
                       <Panel
                         title="対応待ち"
@@ -1215,6 +1227,7 @@ export default function App() {
                                         </strong>
                                       </div>
                                       <p>{m.profile.bio}</p>
+                                      <MemberPaidInfo id={m.id} />
                                       {m.status_reason && (
                                         <p className="notice">
                                           変更理由：{m.status_reason}
@@ -1670,6 +1683,15 @@ export default function App() {
                       .length && <Empty />}
                   </>
                 )}
+                {current.path === "/advisors" && (
+                  <PaidAdvisors setDialog={setDialog} notify={notify} />
+                )}
+                {current.path === "/sessions" && (
+                  <PaidSessions setDialog={setDialog} notify={notify} />
+                )}
+                {current.path === "/payouts" && (
+                  <PaidPayouts setDialog={setDialog} notify={notify} />
+                )}
                 {current.path === "/consultations" && (
                   <>
                     {toolbar([
@@ -1884,6 +1906,7 @@ export default function App() {
                           filter === "all" ||
                           (n.published ? "published" : "draft") === filter,
                       ).length && <Empty />}
+                    <PaidAdvisorLinks setDialog={setDialog} notify={notify} />
                   </>
                 )}
                 {current.path === "/emails" && (

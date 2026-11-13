@@ -42,7 +42,7 @@ export default defineConfig({
     },
     {
       name: "connected-ui",
-      testMatch: "connected.spec.ts",
+      testMatch: ["connected.spec.ts", "sessions-ui.spec.ts"],
       use: {
         ...devices["Desktop Chrome"],
         viewport: { width: 1280, height: 900 },
