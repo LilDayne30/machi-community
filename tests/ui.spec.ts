@@ -196,7 +196,7 @@ test("ホーム・画像・レスポンシブ・主要画面の2タップ導線"
   for (const [path, title] of [
     ["/people", "話せる人"],
     ["/rooms", "メッセージ"],
-    ["/consult", "プロへの相談"],
+    ["/consult", "留学エージェントに相談"],
     ["/profile", "プロフィール"],
   ]) {
     await page
@@ -207,7 +207,7 @@ test("ホーム・画像・レスポンシブ・主要画面の2タップ導線"
               {
                 話せる人: "話せる人",
                 メッセージ: "メッセージ",
-                プロへの相談: "相談",
+                留学エージェントに相談: "相談",
                 プロフィール: "マイページ",
               } as any
             )[title]
@@ -367,7 +367,7 @@ test("本番の相談画面：事業者が未登録でも案内とアクセシ�
   });
   await page.goto("/consult");
   await expect(
-    page.getByRole("heading", { name: "プロへの相談", exact: true }),
+    page.getByRole("heading", { name: "留学エージェントに相談", exact: true }),
   ).toBeVisible();
   await expect(
     page.getByText("相談を受付中の事業者はいません", { exact: true }),
@@ -615,10 +615,7 @@ test("プロ相談・明示的な共有・送信履歴", async ({ page }) => {
     .getByRole("button", { name: "メッセージを送信", exact: true })
     .click();
   await page.goto("/consult");
-  await page
-    .getByRole("button", { name: "このプロに相談する" })
-    .first()
-    .click();
+  await page.getByRole("button", { name: "ここに相談する" }).first().click();
   await page
     .getByLabel("相談のタイトル", { exact: true })
     .fill("11月の喫茶店めぐり");

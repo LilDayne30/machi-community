@@ -204,7 +204,7 @@ test("実API：同意したプロ相談を保存し、宛先の事業者へ開�
   await page
     .locator(".provider-card")
     .filter({ hasText: "実接続テストの相談先" })
-    .getByRole("button", { name: "このプロに相談する" })
+    .getByRole("button", { name: "ここに相談する" })
     .click();
   await page
     .getByLabel("相談のタイトル", { exact: true })
