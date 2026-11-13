@@ -55,13 +55,21 @@ export async function api<T>(path: string, init?: RequestInit): Promise<T> {
   if (!r.ok) throw new Error(j.error || "通信に失敗しました");
   return j;
 }
+export type ToastAction = { label: string; to: string };
+// 国籍が未登録で送信できないときに、入力欄へ直接進める案内。
+export const nationalityRequired = "メッセージを送るには、国籍の登録が必要です";
+export const nationalityField: ToastAction = {
+  label: "国籍を入力する",
+  to: "/profile#profile-nationality",
+};
 type Context = {
   data: Bootstrap;
   loading: boolean;
   error: string;
   setData: (f: (d: Bootstrap) => Bootstrap) => void;
-  toast: (s: string) => void;
+  toast: (s: string, action?: ToastAction) => void;
   notify: string;
+  notifyAction?: ToastAction;
   guard: () => boolean;
   refresh: () => Promise<void>;
   startConversation: (person: CommunityMember) => Promise<string | null>;
@@ -71,9 +79,11 @@ export function Provider({ children }: { children: ReactNode }) {
   const [data, setState] = useState<Bootstrap>(sample),
     [loading, setLoading] = useState(true),
     [error, setError] = useState(""),
-    [notify, setNotify] = useState("");
-  function toast(s: string) {
+    [notify, setNotify] = useState(""),
+    [notifyAction, setNotifyAction] = useState<ToastAction>();
+  function toast(s: string, action?: ToastAction) {
     setNotify(s);
+    setNotifyAction(action);
   }
   function setData(f: (d: Bootstrap) => Bootstrap) {
     setState((d) => {
@@ -141,9 +151,10 @@ export function Provider({ children }: { children: ReactNode }) {
   }, [data.mode, data.user?.id]);
   useEffect(() => {
     if (!notify) return;
-    const t = setTimeout(() => setNotify(""), 4000);
+    // 操作つきの通知は、読んでから押せるよう長めに表示する。
+    const t = setTimeout(() => setNotify(""), notifyAction ? 9000 : 4000);
     return () => clearTimeout(t);
-  }, [notify]);
+  }, [notify, notifyAction]);
   function guard() {
     if (data.mode === "production" && !data.user) {
       toast("Googleアカウントでログインしてください");
@@ -154,7 +165,7 @@ export function Provider({ children }: { children: ReactNode }) {
   async function startConversation(person: CommunityMember) {
     if (!guard()) return null;
     if (!data.profile.nationality.trim()) {
-      toast("プロフィールに国籍を登録してください");
+      toast(nationalityRequired, nationalityField);
       return null;
     }
     if (data.mode === "production") {
@@ -200,6 +211,7 @@ export function Provider({ children }: { children: ReactNode }) {
         setData,
         toast,
         notify,
+        notifyAction,
         guard,
         refresh,
         startConversation,

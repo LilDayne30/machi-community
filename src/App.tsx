@@ -27,6 +27,7 @@ import {
   EventDetailPage as TalkDetail,
 } from "./components/events";
 import { Home } from "./components/home";
+import { GoogleLogin } from "./components/login";
 import { VisitStatus } from "./components/visit-status";
 import { useGlassEffects } from "./components/useGlassEffects";
 import {
@@ -66,7 +67,13 @@ import {
   Users,
   X,
 } from "lucide-react";
-import { api, saveProfile, useApp } from "./lib/store";
+import {
+  api,
+  nationalityField,
+  nationalityRequired,
+  saveProfile,
+  useApp,
+} from "./lib/store";
 import { matchesMember, normalizePlace, parseRegions } from "./lib/profile";
 import { photoDataUrl, prepareProfilePhoto } from "./lib/photo";
 import {
@@ -109,7 +116,7 @@ const nav = [
 ];
 export default function App() {
   const effectsRef = useGlassEffects();
-  const { data, loading, error, notify } = useApp(),
+  const { data, loading, error, notify, notifyAction } = useApp(),
     location = useLocation(),
     [transition, setTransition] = useState(false),
     [notifications, setNotifications] = useState(false),
@@ -270,14 +277,14 @@ export default function App() {
           </div>
         </header>
         {data.mode === "preview" && !loading && (
-          <div className="preview-label">
+          <aside className="preview-label" aria-label="プレビューの案内">
             <span>プレビュー</span>サンプルデータ · 変更はこの端末に保存
-          </div>
+          </aside>
         )}
         <main id="main">
           {error ? (
             <div className="empty glass">
-              <h2>読み込めませんでした</h2>
+              <h1 className="empty-title">読み込めませんでした</h1>
               <p>{error}</p>
               <button
                 className="button primary"
@@ -328,7 +335,7 @@ export default function App() {
             <span>
               Roamigo<span className="brand-dot">.</span>
             </span>
-            <small>地域と1対1の会話</small>
+            <small>留学の相談を1対1で</small>
             <span className="footer-status">
               <span className="live-dot" />
               招待制
@@ -382,8 +389,13 @@ export default function App() {
             animate={{ opacity: 1, y: 0 }}
             exit={{ opacity: 0, y: 20 }}
           >
-            <Check size={18} />
-            {notify}
+            <Check size={18} aria-hidden="true" />
+            <span>{notify}</span>
+            {notifyAction && (
+              <Link className="toast-action" to={notifyAction.to}>
+                {notifyAction.label}
+              </Link>
+            )}
           </motion.div>
         )}
       </AnimatePresence>
@@ -415,7 +427,7 @@ export default function App() {
         <Modal title="使い方・サポート" onClose={() => setHelp(false)}>
           <div className="prose">
             <p>
-              「話せる人」から相手を選んで、1対1でメッセージを送れます。同じ相手との会話は、次の旅でも続けられます。イベントの企画はホームから確認できます。
+              「話せる人」から相手を選んで、1対1でメッセージを送れます。同じ相手との会話は、あとからいつでも続けられます。イベントの企画はホームから確認できます。
             </p>
             <p>
               訪問ステータスはプロフィールの「訪問予定」で、左右にフリックするか矢印ボタンで切り替え、変更を保存します。
@@ -485,6 +497,7 @@ function NotesPage() {
           ))}
           <span className="filter-hint">確認日つきの地域情報</span>
         </div>
+        <h2 className="sr-only">メモの一覧</h2>
         {list.length ? (
           <div className="notes-grid">
             {list.map((n) => (
@@ -550,7 +563,7 @@ function ConversationButton({
       onClick={async () => {
         if (!data.profile.nationality.trim()) {
           toast("国籍を登録すると会話を始められます");
-          navigate("/profile");
+          navigate(nationalityField.to);
           return;
         }
         setBusy(true);
@@ -783,7 +796,7 @@ function Members() {
               placeholder={
                 axis === "alumni"
                   ? "高校留学、学校生活、カナダ…"
-                  : "台北、京都、喫茶店…"
+                  : "国・地域、学校、暮らし…"
               }
               onChange={(e) => setQuery(e.target.value)}
             />
@@ -1002,6 +1015,7 @@ function Members() {
           )}
         </div>
       </div>
+      <h2 className="sr-only">話せる人の一覧</h2>
       <div className="people-grid">
         {list.map((p, index) => (
           <MemberCard key={p.id} person={p} index={index} />
@@ -1033,8 +1047,8 @@ function MemberDetail() {
   const person = data.people.find((p) => p.id === id) || conversation?.peer;
   if (!person)
     return (
-      <Empty>
-        プロフィールが見つかりません<Link to="/people">話せる人へ</Link>
+      <Empty title="プロフィールが見つかりません">
+        <Link to="/people">話せる人へ</Link>
       </Empty>
     );
   return (
@@ -1328,6 +1342,11 @@ function Rooms() {
     </>
   );
 }
+const exampleQuestions = [
+  "渡航前に知っておけばよかったことは？",
+  "現地の学校生活で困ったことは？",
+  "保護者として準備しておくべきことは？",
+];
 function RoomDetail() {
   const { id } = useParams(),
     { data, setData, toast, guard, refresh } = useApp(),
@@ -1338,7 +1357,13 @@ function RoomDetail() {
     [busy, setBusy] = useState(false),
     [menu, setMenu] = useState(""),
     [details, setDetails] = useState(false),
-    end = useRef<HTMLDivElement>(null);
+    end = useRef<HTMLDivElement>(null),
+    composer = useRef<HTMLTextAreaElement>(null);
+  // 例文を入力欄へ入れ、そのまま編集・送信できるようフォーカスを移す。
+  function insertDraft(text: string) {
+    setBody(text);
+    composer.current?.focus();
+  }
   const room = data.rooms.find((r) => r.id === id);
   const direct = room?.kind === "direct";
   async function blockPeer() {
@@ -1417,7 +1442,7 @@ function RoomDetail() {
     e.preventDefault();
     if (!body.trim() || room?.blocked || !guard()) return;
     if (!data.profile.nationality.trim()) {
-      toast("プロフィールに国籍を登録してください");
+      toast(nationalityRequired, nationalityField);
       return;
     }
     setBusy(true);
@@ -1503,7 +1528,12 @@ function RoomDetail() {
       setBusy(false);
     }
   }
-  if (!room) return <Empty>参加している会話が見つかりません</Empty>;
+  if (!room)
+    return (
+      <Empty title="参加している会話が見つかりません">
+        <Link to="/rooms">メッセージへ</Link>
+      </Empty>
+    );
   return (
     <>
       <Link to="/rooms" className="back-link">
@@ -1572,10 +1602,11 @@ function RoomDetail() {
               <small>{room.peer?.availability}</small>
               {room.peer?.interests.slice(0, 2).map((interest) => (
                 <button
+                  type="button"
                   className="button subtle"
                   key={interest}
                   onClick={() =>
-                    setBody(
+                    insertDraft(
                       "はじめまして。" +
                         interest +
                         "についてお話ししたいです。",
@@ -1583,9 +1614,28 @@ function RoomDetail() {
                   }
                 >
                   {interest}の話をする
-                  <ArrowUpRight size={14} />
+                  <ArrowUpRight size={14} aria-hidden="true" />
                 </button>
               ))}
+              <div
+                className="question-examples"
+                role="group"
+                aria-labelledby="question-examples-title"
+              >
+                <p id="question-examples-title">
+                  質問の例（選ぶと入力欄に入ります）
+                </p>
+                {exampleQuestions.map((question) => (
+                  <button
+                    type="button"
+                    className="button subtle"
+                    key={question}
+                    onClick={() => insertDraft(question)}
+                  >
+                    {question}
+                  </button>
+                ))}
+              </div>
             </div>
           )}
           {room.messages
@@ -1686,8 +1736,9 @@ function RoomDetail() {
           )}
           <div className="compose-row">
             <textarea
+              ref={composer}
               aria-label="メッセージ"
-              placeholder="近況や、次の旅のことを…"
+              placeholder="聞きたいことや近況を…"
               rows={1}
               maxLength={2000}
               disabled={room.blocked}
@@ -1778,7 +1829,12 @@ function NoteDetail() {
         ) as string[],
     );
   const n = data.notes.find((n) => n.id === id);
-  if (!n) return <Empty>メモが見つかりません</Empty>;
+  if (!n)
+    return (
+      <Empty title="メモが見つかりません">
+        <Link to="/notes">現地のメモへ</Link>
+      </Empty>
+    );
   return (
     <>
       <Link to="/notes" className="back-link">
@@ -2002,7 +2058,7 @@ function Consult() {
               maxLength={100}
               value={title}
               onChange={(e) => setTitle(e.target.value)}
-              placeholder="例：再訪時の喫茶店めぐりについて"
+              placeholder="例：渡航前の準備について"
             />
           </label>
           <label className="field">
@@ -2145,30 +2201,13 @@ function Consult() {
     </>
   );
 }
-function GoogleMark() {
-  return (
-    <svg aria-hidden="true" width="20" height="20" viewBox="0 0 24 24">
-      <path
-        fill="#4285F4"
-        d="M21.6 12.2c0-.7-.1-1.4-.2-2.1H12v4h5.4a4.6 4.6 0 0 1-2 3v2.5h3.3c1.9-1.7 2.9-4.2 2.9-7.4Z"
-      />
-      <path
-        fill="#34A853"
-        d="M12 22c2.7 0 4.9-.9 6.6-2.4l-3.3-2.5c-.9.6-2 1-3.3 1-2.6 0-4.8-1.7-5.6-4H3v2.6A10 10 0 0 0 12 22Z"
-      />
-      <path
-        fill="#FBBC05"
-        d="M6.4 14.1a6 6 0 0 1 0-4.2V7.3H3a10 10 0 0 0 0 9.4l3.4-2.6Z"
-      />
-      <path
-        fill="#EA4335"
-        d="M12 5.9c1.5 0 2.8.5 3.8 1.5l2.8-2.8A9.7 9.7 0 0 0 12 2a10 10 0 0 0-9 5.3l3.4 2.6c.8-2.3 3-4 5.6-4Z"
-      />
-    </svg>
-  );
-}
 function ProfilePage() {
   const { hash } = useLocation();
+  const nationalityInput = useRef<HTMLInputElement>(null);
+  // 「国籍を入力する」から来たときは、入力欄へ直接フォーカスする。
+  useEffect(() => {
+    if (hash === "#profile-nationality") nationalityInput.current?.focus();
+  }, [hash]);
   const { data, setData, toast, guard, refresh } = useApp(),
     [p, setP] = useState<Profile>(data.profile || emptyProfile),
     [busy, setBusy] = useState(false),
@@ -2279,8 +2318,9 @@ function ProfilePage() {
     expired:
       "認証の有効期限が切れました。この画面からログインをやり直してください。",
     not_invited:
-      "このGoogleアカウントは招待されていません。招待されたアカウントを選ぶか、運営へご確認ください。",
-    failed: "Google認証を完了できませんでした。もう一度お試しください。",
+      "このGoogleアカウントは招待されていません。招待メールが届いたメールアドレスと同じGoogleアカウントでログインしてください。解決しない場合は、招待メールに返信してお知らせください。",
+    failed:
+      "Googleでのログインを完了できませんでした。もう一度お試しください。",
   };
   const loginReason = loginParams.get("login") || "";
   const loginMessage = Object.hasOwn(loginMessages, loginReason)
@@ -2318,26 +2358,10 @@ function ProfilePage() {
             </span>
             <div>
               <h2>Googleでログイン</h2>
-              <p>招待されたGoogleアカウントを使用します。</p>
+              <p>招待メールが届いたアドレスのGoogleアカウントを使います。</p>
             </div>
           </div>
-          {data.configured.google ? (
-            <a href="/api/auth/google" className="button google-button">
-              <GoogleMark />
-              Googleで続ける
-              <ArrowRight size={17} />
-            </a>
-          ) : (
-            <>
-              <button className="button google-button" disabled>
-                Google認証は未接続です
-              </button>
-              <small className="login-setup-note">
-                <AlertCircle size={16} />
-                運営側でGoogle認証の接続設定が必要です。
-              </small>
-            </>
-          )}
+          <GoogleLogin available={data.configured.google} />
         </div>
       )}
       <nav className="profile-section-nav" aria-label="プロフィールの項目">
@@ -2357,7 +2381,10 @@ function ProfilePage() {
             key={section.id}
             href={"#" + section.id}
             aria-current={
-              (hash || "#profile-basic") === "#" + section.id
+              (!hash || hash === "#profile-nationality"
+                ? "#profile-basic"
+                : hash) ===
+              "#" + section.id
                 ? "location"
                 : undefined
             }
@@ -2384,7 +2411,7 @@ function ProfilePage() {
           </div>
           <div className="profile-identity">
             <Avatar
-              name={p.name || "旅"}
+              name={p.name || "ゲスト"}
               color="#dce5dc"
               src={photo ? photoPreview : removePhoto ? "" : p.avatarUrl}
             />
@@ -2461,6 +2488,8 @@ function ProfilePage() {
                 required
                 maxLength={60}
                 name="nationality"
+                id="profile-nationality"
+                ref={nationalityInput}
                 autoComplete="off"
                 value={p.nationality}
                 placeholder="例：日本"
@@ -2549,7 +2578,7 @@ function ProfilePage() {
               maxLength={500}
               value={p.bio}
               onChange={(e) => setP({ ...p, bio: e.target.value })}
-              placeholder="好きなことや、この街との思い出"
+              placeholder="留学や現地での経験、好きなこと"
             />
           </label>
           <div className="field">

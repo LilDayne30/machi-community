@@ -10,6 +10,8 @@ export default function () {
       "execute",
       "DB",
       "--local",
+      "--persist-to",
+      ".wrangler/test-state",
       "--command",
       "DELETE FROM admin_sessions WHERE user_id IN (SELECT id FROM users WHERE id LIKE 'e2e-%' AND google_sub LIKE 'google-%'); UPDATE users SET email='e2e-admin@fixtures.invalid' WHERE id='e2e-admin' AND google_sub='google-admin';",
     ],

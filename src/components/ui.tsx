@@ -236,11 +236,19 @@ export function TalkCard({
     </Link>
   );
 }
-export function Empty({ children }: { children: ReactNode }) {
+export function Empty({
+  title,
+  children,
+}: {
+  // 画面全体が「見つかりません」になる場合の見出し。一覧内の空状態では省略する。
+  title?: string;
+  children?: ReactNode;
+}) {
   return (
     <div className="empty glass">
-      <MapPin size={26} />
-      <p>{children}</p>
+      <MapPin size={26} aria-hidden="true" />
+      {title && <h1 className="empty-title">{title}</h1>}
+      {children && <p>{children}</p>}
     </div>
   );
 }

@@ -430,7 +430,7 @@ app.get("/api/bootstrap", async (c) => {
 app.get("/api/auth/google", async (c) => {
   if (!c.env.GOOGLE_CLIENT_ID || !c.env.GOOGLE_CLIENT_SECRET)
     throw new HTTPException(503, {
-      message: "Google認証はまだ接続されていません",
+      message: "Googleログインは準備中です。しばらくお待ちください。",
     });
   const state = randomToken(),
     nonce = randomToken(),
@@ -530,7 +530,8 @@ app.get("/api/auth/callback", async (c) => {
       .first())
   )
     throw new HTTPException(403, {
-      message: "このアカウントは招待されていません。運営へご確認ください。",
+      message:
+        "このGoogleアカウントは招待されていません。招待メールが届いたメールアドレスと同じGoogleアカウントでログインしてください。解決しない場合は、招待メールに返信してお知らせください。",
     });
   const userId = existing?.id || uid();
   if (!existing)
@@ -545,7 +546,7 @@ app.get("/api/auth/callback", async (c) => {
           email,
           typeof payload.name === "string"
             ? payload.name.slice(0, 40)
-            : "旅する人",
+            : "メンバー",
           isAdmin ? "admin" : "member",
         ),
       db

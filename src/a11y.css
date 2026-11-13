@@ -1,0 +1,183 @@
+/* Accessibility layer. Loaded last: keeps the visual design and only lifts
+   touch targets, readable sizes and the states added for login guidance. */
+
+/* Touch targets: 44×44px minimum for the controls that fell just short. */
+.button.small-button,
+.button.text-button,
+.account-actions > .button,
+.conversation-start .button {
+  min-height: 44px;
+}
+.event-axis-tabs button,
+.event-detail-breadcrumb > a {
+  min-height: 44px;
+}
+.visit-status-steps > button {
+  height: 44px;
+}
+.chat-header .room-cover {
+  width: 44px;
+  height: 44px;
+}
+.chat-header .room-cover > a {
+  display: block;
+  width: 100%;
+  height: 100%;
+  border-radius: inherit;
+}
+.home-conversations-heading > a {
+  min-width: 44px;
+  justify-content: flex-end;
+}
+.home-conversations-empty a {
+  min-height: 44px;
+}
+.reply-bar > button {
+  display: grid;
+  place-items: center;
+  flex: 0 0 44px;
+  min-height: 44px;
+  margin: -12px -8px -6px 0;
+  border-radius: 12px;
+}
+@media (min-width: 761px) {
+  .topbar-right > a:not(.icon-button) {
+    display: grid;
+    place-items: center;
+    min-width: 44px;
+    min-height: 44px;
+    border-radius: 50%;
+  }
+}
+
+/* Full-page "not found / failed" states carry the page heading. */
+.empty .empty-title {
+  font-size: 1.15rem;
+  font-weight: 650;
+  line-height: 1.6;
+  letter-spacing: -0.02em;
+  color: var(--ink);
+}
+
+/* Logged-out home: what the site is, and the one way in. */
+.home-welcome {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px 24px;
+  margin-bottom: 24px;
+  padding: 20px;
+  border-radius: 28px;
+}
+.home-welcome-lead {
+  flex: 1 1 280px;
+  font-size: 1rem;
+  line-height: 1.8;
+  color: var(--ink);
+}
+.home-welcome-login {
+  display: grid;
+  gap: 8px;
+  flex: 0 1 auto;
+  min-width: 0;
+}
+.home-welcome-login > small {
+  font-size: 13px;
+  line-height: 1.6;
+  color: #536658;
+}
+.home-welcome .google-button {
+  background: #fff;
+  border: 1px solid #bcc9bc;
+  color: #304638;
+  min-height: 48px;
+  box-shadow:
+    var(--rim),
+    0 5px 14px -9px #31583f55;
+}
+@media (max-width: 760px) {
+  .home-welcome {
+    padding: 16px;
+    border-radius: 24px;
+  }
+  .home-welcome-login,
+  .home-welcome .google-button {
+    width: 100%;
+  }
+}
+
+/* Google login not available yet: a plain notice, not a dead button. */
+.login-pending {
+  display: flex;
+  align-items: flex-start;
+  gap: 10px;
+  max-width: 360px;
+  margin: 0;
+  font-size: 14px;
+  line-height: 1.7;
+  color: #536658;
+}
+.login-pending > svg {
+  margin-top: 4px;
+}
+.login-pending strong {
+  display: block;
+  font-size: 15px;
+  font-weight: 650;
+  color: var(--ink);
+}
+
+/* Toast with a follow-up action (e.g. go to the nationality field). */
+.toast-action {
+  display: inline-flex;
+  align-items: center;
+  flex-shrink: 0;
+  min-height: 44px;
+  margin: -12px -8px -12px 4px;
+  padding: 0 8px;
+  border-radius: 12px;
+  font-weight: 650;
+  color: var(--green);
+  text-decoration: underline;
+  text-underline-offset: 3px;
+}
+
+/* Example questions offered before the first message. */
+.question-examples {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  gap: 8px;
+  width: 100%;
+  max-width: 560px;
+  margin-top: 8px;
+}
+.question-examples > p {
+  flex-basis: 100%;
+}
+.question-examples .button {
+  max-width: 100%;
+  height: auto;
+  padding-block: 10px;
+  line-height: 1.5;
+  white-space: normal;
+  text-align: left;
+}
+
+/* Longer login guidance needs the full row width on phones. */
+@media (max-width: 760px) {
+  .login-feedback {
+    align-items: flex-start;
+    gap: 10px;
+    padding: 16px;
+  }
+  .login-feedback > svg {
+    margin-top: 3px;
+  }
+  .login-feedback p {
+    min-width: 0;
+    margin: 0;
+    padding: 0;
+  }
+}

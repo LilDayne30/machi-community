@@ -1071,3 +1071,11 @@ test("地域情報の更新は本人だけに限定し、受付とブロック�
     ).profile.connections,
   ).toEqual([]);
 });
+
+test("/api ちょうどのパスもJSONの404を返す", async ({ request }) => {
+  for (const base of ["http://127.0.0.1:8787", "http://127.0.0.1:8788"]) {
+    const res = await request.get(base + "/api");
+    expect(res.status()).toBe(404);
+    expect(res.headers()["content-type"]).toContain("application/json");
+  }
+});
