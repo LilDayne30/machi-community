@@ -127,7 +127,7 @@ const nav = [
   { to: "/", label: "ホーム", icon: HomeIcon },
   { to: "/people", label: "話せる人", icon: Users },
   { to: "/rooms", label: "メッセージ", icon: MessageCircle },
-  { to: "/consult", label: "プロへの相談", icon: Compass },
+  { to: "/consult", label: "留学エージェントに相談", icon: Compass },
   { to: "/profile", label: "プロフィール", icon: Settings2 },
 ];
 export default function App() {
@@ -400,7 +400,7 @@ export default function App() {
                 <span>
                   {n.label === "プロフィール"
                     ? "マイページ"
-                    : n.label === "プロへの相談"
+                    : n.label === "留学エージェントに相談"
                       ? "相談"
                       : n.label}
                 </span>
@@ -463,7 +463,7 @@ export default function App() {
               訪問ステータスはプロフィールの「訪問予定」で、左右にフリックするか矢印ボタンで切り替え、変更を保存します。
             </p>
             <p>
-              気になる投稿は「通報」から運営へお知らせください。プロへの依頼は自分で内容と共有範囲を選んで送信できます。
+              気になる投稿は「通報」から運営へお知らせください。留学エージェントへの相談は、自分で内容と共有範囲を選んで送信できます。
             </p>
             <p>
               イベントは開催準備中です。日時・参加費・キャンセル条件は募集開始時にご案内します。
@@ -2007,25 +2007,33 @@ function Consult() {
   }
   return (
     <>
-      <Heading eyebrow="LOCAL PROFESSIONALS" title="プロへの相談" />
+      <Heading eyebrow="STUDY ABROAD AGENTS" title="留学エージェントに相談" />
       <div className="info-strip glass">
         <ShieldCheck size={20} />
-        <p>あなたが依頼したときだけ、選んだ事業者に相談が届きます。</p>
+        <p>
+          相談は無料です。あなたが依頼したときだけ、選んだエージェントに相談が届きます。
+        </p>
       </div>
       {data.mode === "production" && !data.providers?.length && (
-        <Empty>相談を受付中の事業者はいません</Empty>
+        <Empty>相談を受付中のエージェントはいません</Empty>
       )}
-      <section className="providers-grid" aria-label="相談できるプロ">
+      <section
+        className="providers-grid"
+        aria-label="相談できる留学エージェント"
+      >
         {(data.mode === "preview" ? providers : data.providers || []).map(
           (p) => (
             <div className="provider-card glass" key={p.id}>
               <div className="provider-head">
                 <Avatar name={p.initial || p.name} color={p.color} />
                 <div>
-                  <h2>{p.name}</h2>
+                  <h2>{p.organization || p.name}</h2>
+                  {p.organization && (
+                    <p className="provider-affiliation">担当：{p.name}</p>
+                  )}
                   <span className="provider-badge">
                     <ShieldCheck size={12} />
-                    確認済み事業者
+                    確認済みエージェント
                   </span>
                 </div>
               </div>
@@ -2033,7 +2041,7 @@ function Consult() {
                 <span>{p.theme}</span>
               </div>
               <p>{p.bio}</p>
-              <div className="provider-price">{p.price}</div>
+              <div className="provider-price">相談無料</div>
               <button
                 className={
                   "button full " + (selected === p.id ? "primary" : "subtle")
@@ -2057,7 +2065,7 @@ function Consult() {
                   </>
                 ) : (
                   <>
-                    このプロに相談する
+                    ここに相談する
                     <ArrowUpRight size={16} />
                   </>
                 )}
@@ -2080,7 +2088,7 @@ function Consult() {
               <h2 ref={formHeading} tabIndex={-1}>
                 相談内容
               </h2>
-              <p>選んだプロと運営に届きます。</p>
+              <p>選んだ留学エージェントと運営に届きます。</p>
             </div>
           </div>
           <label className="field">
@@ -2116,12 +2124,12 @@ function Consult() {
               rows={4}
               value={body}
               onChange={(e) => setBody(e.target.value)}
-              placeholder="相談したいこと、人数、ご希望など"
+              placeholder="行きたい国・時期、迷っていることなど"
             />
           </label>
           <div className="form-row">
             <label className="field">
-              予算
+              留学の予算（目安）
               <select
                 value={budget}
                 required
@@ -2129,11 +2137,11 @@ function Consult() {
               >
                 <option value="">選んでください</option>
                 {[
-                  "3,000円以内",
-                  "3,000〜5,000円",
-                  "5,000〜10,000円",
-                  "10,000円以上",
-                  "相談したい",
+                  "100万円未満",
+                  "100〜300万円",
+                  "300〜500万円",
+                  "500万円以上",
+                  "まだ決めていない",
                 ].map((s) => (
                   <option key={s}>{s}</option>
                 ))}
@@ -2182,9 +2190,7 @@ function Consult() {
               checked={consent}
               onChange={(e) => setConsent(e.target.checked)}
             />
-            <span>
-              相談先と運営へ上記の内容を共有することに同意します。料金は事業者の回答後に確認します。
-            </span>
+            <span>相談先と運営へ上記の内容を共有することに同意します。</span>
           </label>
           <button className="button primary" disabled={busy || !consent}>
             {busy ? "送信中…" : "相談を送る"}
@@ -2233,8 +2239,8 @@ function Consult() {
           </div>
           <p className="prose">
             {data.mode === "preview"
-              ? "端末内のプレビューとして保存しました。事業者へは送信されていません。"
-              : "運営が内容を確認し、事業者との日程調整を進めます。"}
+              ? "端末内のプレビューとして保存しました。エージェントへは送信されていません。"
+              : "運営が内容を確認し、エージェントとの日程調整を進めます。"}
           </p>
           <button
             className="button primary full"

@@ -196,7 +196,7 @@ test("ホーム・画像・レスポンシブ・主要画面の2タップ導線"
   for (const [path, title] of [
     ["/people", "話せる人"],
     ["/rooms", "メッセージ"],
-    ["/consult", "プロへの相談"],
+    ["/consult", "留学エージェントに相談"],
     ["/profile", "プロフィール"],
   ]) {
     await page
@@ -207,7 +207,7 @@ test("ホーム・画像・レスポンシブ・主要画面の2タップ導線"
               {
                 話せる人: "話せる人",
                 メッセージ: "メッセージ",
-                プロへの相談: "相談",
+                留学エージェントに相談: "相談",
                 プロフィール: "マイページ",
               } as any
             )[title]
@@ -367,10 +367,10 @@ test("本番の相談画面：事業者が未登録でも案内とアクセシ�
   });
   await page.goto("/consult");
   await expect(
-    page.getByRole("heading", { name: "プロへの相談", exact: true }),
+    page.getByRole("heading", { name: "留学エージェントに相談", exact: true }),
   ).toBeVisible();
   await expect(
-    page.getByText("相談を受付中の事業者はいません", { exact: true }),
+    page.getByText("相談を受付中のエージェントはいません", { exact: true }),
   ).toBeVisible();
   await expect(page.locator(".provider-card")).toHaveCount(0);
   await expect(page.locator(".page-scene")).toHaveCSS("opacity", "1");
@@ -615,10 +615,7 @@ test("プロ相談・明示的な共有・送信履歴", async ({ page }) => {
     .getByRole("button", { name: "メッセージを送信", exact: true })
     .click();
   await page.goto("/consult");
-  await page
-    .getByRole("button", { name: "このプロに相談する" })
-    .first()
-    .click();
+  await page.getByRole("button", { name: "ここに相談する" }).first().click();
   await page
     .getByLabel("相談のタイトル", { exact: true })
     .fill("11月の喫茶店めぐり");
@@ -626,15 +623,13 @@ test("プロ相談・明示的な共有・送信履歴", async ({ page }) => {
     .getByLabel("依頼内容", { exact: true })
     .fill("京都に再訪します。喫茶店めぐりを2人で相談したいです。");
   await page
-    .getByRole("combobox", { name: "予算", exact: true })
-    .selectOption("3,000〜5,000円");
+    .getByRole("combobox", { name: "留学の予算（目安）", exact: true })
+    .selectOption("100〜300万円");
   await page.getByLabel("希望日", { exact: true }).fill("2026-11-20");
   await expect(page.locator(".share-field input")).toHaveCount(1);
   await page.getByLabel("自分の共有してよい投稿です").check();
   await page
-    .getByLabel(
-      "相談先と運営へ上記の内容を共有することに同意します。料金は事業者の回答後に確認します。",
-    )
+    .getByLabel("相談先と運営へ上記の内容を共有することに同意します。")
     .check();
   await page.getByRole("button", { name: "相談を送る", exact: true }).click();
   await expect(

@@ -1868,6 +1868,11 @@ main {
   font-size: 16px;
   margin-bottom: 5px;
 }
+.provider-affiliation {
+  margin: 0 0 4px;
+  font-size: 12px;
+  color: #5d6c55;
+}
 .provider-badge {
   display: flex;
   gap: 4px;

@@ -151,6 +151,7 @@ export type Bootstrap = {
     theme: string;
     bio: string;
     price: string;
+    organization?: string;
     initial?: string;
     color?: string;
   }[];
@@ -525,19 +526,21 @@ export const providers = [
   {
     id: "p1",
     name: "高橋 まどか",
-    initial: "ま",
-    theme: "喫茶店・街歩き",
-    bio: "京都在住12年。喫茶店と路地歩きの個別相談・案内。",
-    price: "相談 ¥2,000〜 / 案内 ¥6,000〜",
+    organization: "サンプル留学センター（見本）",
+    initial: "サ",
+    theme: "カナダ・オーストラリアの高校留学",
+    bio: "高校留学の学校選び、ホームステイ、出発前の準備まで相談できます。",
+    price: "相談無料",
     color: "#e5dbce",
   },
   {
     id: "p2",
     name: "小林 直人",
-    initial: "直",
-    theme: "古本屋・文化",
-    bio: "京都在住8年。古本屋めぐりと文化散歩の個別案内。",
-    price: "相談 ¥2,000〜 / 案内 ¥5,000〜",
+    organization: "見本エデュケーション株式会社（見本）",
+    initial: "見",
+    theme: "アメリカ・イギリスの大学進学",
+    bio: "出願書類、英語試験、奨学金の探し方を相談できます。",
+    price: "相談無料",
     color: "#dce4d9",
   },
 ];

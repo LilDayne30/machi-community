@@ -318,7 +318,7 @@ app.get("/api/bootstrap", async (c) => {
   }));
   const ps = await db
     .prepare(
-      "SELECT p.id,p.name,p.theme,p.bio,p.price FROM providers p JOIN users u ON u.id=p.user_id WHERE p.verified=1 AND u.account_status='active'",
+      "SELECT p.id,p.name,p.organization,p.theme,p.bio,p.price FROM providers p JOIN users u ON u.id=p.user_id WHERE p.verified=1 AND u.account_status='active'",
     )
     .all<any>();
   const advisors = u
@@ -1907,6 +1907,7 @@ app.post("/api/admin/providers", async (c) => {
       z.object({
         email: z.email(),
         name: z.string().min(1).max(100),
+        organization: z.string().trim().min(1).max(100),
         theme: z.string().min(1).max(100),
         bio: z.string().max(1000),
         price: z.string().min(1).max(100),
@@ -1922,8 +1923,8 @@ app.post("/api/admin/providers", async (c) => {
   const id = uid();
   await c.env.DB.batch([
     c.env.DB.prepare(
-      "INSERT INTO providers(id,user_id,name,theme,bio,price) VALUES(?,?,?,?,?,?)",
-    ).bind(id, user.id, p.name, p.theme, p.bio, p.price),
+      "INSERT INTO providers(id,user_id,name,organization,theme,bio,price) VALUES(?,?,?,?,?,?,?)",
+    ).bind(id, user.id, p.name, p.organization, p.theme, p.bio, p.price),
     c.env.DB.prepare(
       "UPDATE users SET role='provider' WHERE id=? AND role='member'",
     ).bind(user.id),

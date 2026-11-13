@@ -601,10 +601,19 @@ export default function App() {
         },
       ],
       providers: [
-        { name: "name", label: "事業者名", maxLength: 100 },
+        {
+          name: "organization",
+          label: "所属（会社・団体名）",
+          maxLength: 100,
+        },
+        { name: "name", label: "担当者名", maxLength: 100 },
         { name: "email", label: "登録済み会員のメール", type: "email" },
         { name: "theme", label: "話せるテーマ", maxLength: 100 },
-        { name: "price", label: "料金の表示", maxLength: 100 },
+        {
+          name: "price",
+          label: "料金メモ（利用者には表示しません）",
+          maxLength: 100,
+        },
         {
           name: "bio",
           label: "事業者の紹介",
@@ -1806,7 +1815,8 @@ export default function App() {
                             <div className="record-header">
                               <div>
                                 <span className="eyebrow">{p.theme}</span>
-                                <h2>{p.name}</h2>
+                                <h2>{p.organization || "所属未登録"}</h2>
+                                <p>担当：{p.name}</p>
                               </div>
                               <Badge
                                 status={p.verified ? "verified" : "unverified"}
