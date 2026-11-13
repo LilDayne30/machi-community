@@ -8,6 +8,7 @@
     "build": "tsc -b && vite build && vite build --config vite.admin.config.ts",
     "preview": "vite preview --host 127.0.0.1",
     "api:dev": "wrangler dev --local --port 8787",
+    "api:test": "wrangler dev --local --port 8787 --persist-to .wrangler/test-state",
     "db:local": "wrangler d1 migrations apply DB --local",
     "db:remote": "wrangler d1 migrations apply DB --remote",
     "deploy": "node scripts/check-deploy.mjs && npm run build && wrangler deploy",
@@ -16,8 +17,10 @@
     "test:all": "npm run build && npm run test:unit && npm test",
     "publish:github": "node scripts/publish-github.mjs",
     "auth:google": "node scripts/setup-google.mjs",
+    "invite": "node scripts/invite.mjs",
     "admin:dev": "vite --config vite.admin.config.ts",
     "admin:api": "wrangler dev --config wrangler.admin.jsonc --local --port 8788",
+    "admin:api:test": "wrangler dev --config wrangler.admin.jsonc --local --port 8788 --persist-to .wrangler/test-state",
     "deploy:admin": "node scripts/check-deploy.mjs wrangler.admin.jsonc && npm run build && wrangler deploy --config wrangler.admin.jsonc"
   },
   "dependencies": {

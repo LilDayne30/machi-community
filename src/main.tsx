@@ -11,6 +11,7 @@ import "./participation.css";
 import "./events.css";
 import "./home.css";
 import "./sessions.css";
+import "./a11y.css";
 ReactDOM.createRoot(document.getElementById("root")!).render(
   <React.StrictMode>
     <BrowserRouter>

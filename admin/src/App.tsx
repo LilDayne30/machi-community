@@ -857,7 +857,7 @@ export default function App() {
             </div>
           </header>
           {mode === "preview" && (
-            <div className="preview-bar">
+            <aside className="preview-bar" aria-label="サンプル環境の案内">
               <span>
                 <span className="preview-dot" />
                 <strong>サンプル</strong>
@@ -881,7 +881,7 @@ export default function App() {
               >
                 リセット
               </button>
-            </div>
+            </aside>
           )}
           <main id="main-content">
             <div className="page-heading">

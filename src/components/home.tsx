@@ -20,6 +20,7 @@ import {
 } from "../lib/participation";
 import { Avatar, Heading } from "./ui";
 import { SessionNotice } from "./sessions";
+import { GoogleLogin } from "./login";
 
 export function Home() {
   const { data } = useApp();
@@ -40,6 +41,21 @@ export function Home() {
     <div className="home-hub">
       <Heading eyebrow="HOME" title="ホーム" />
       <SessionNotice />
+      {!data.user && (
+        <section className="home-welcome glass" aria-label="Roamigoについて">
+          <p className="home-welcome-lead">
+            留学を考える家族と、留学経験者・現地の人をつなぐ招待制の相談の場です。
+          </p>
+          <div className="home-welcome-login">
+            <GoogleLogin available={data.configured.google} />
+            {data.configured.google && (
+              <small>
+                招待メールが届いたアドレスのGoogleアカウントを使います。
+              </small>
+            )}
+          </div>
+        </section>
+      )}
       <div className="home-hub-layout">
         <section
           className={`home-discover glass home-discover--${axis}`}
@@ -209,7 +225,7 @@ export function Home() {
                   {data.mode === "production" && !data.user && (
                     <Link to="/profile">
                       ログインへ
-                      <ArrowRight size={16} />
+                      <ArrowRight size={16} aria-hidden="true" />
                     </Link>
                   )}
                 </div>
@@ -239,7 +255,7 @@ function UsersSymbol() {
     <>
       <span />
       <span />
-      <MessageCircle size={20} />
+      <MessageCircle size={20} aria-hidden="true" />
     </>
   );
 }
