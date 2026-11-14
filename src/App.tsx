@@ -2221,7 +2221,7 @@ function Consult() {
                   {
                     submitted: "送信済み",
                     accepted: "受諾",
-                    completed: "有料成立",
+                    completed: "相談完了",
                     cancelled: "取消",
                   }[c.status]
                 }
