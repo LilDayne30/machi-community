@@ -1,4 +1,4 @@
-import { openPeopleFilters } from "./helpers";
+import { openPeopleFilters, undersizedControls } from "./helpers";
 import { test, expect } from "@playwright/test";
 
 test("実API：立場別に入力し、留学経験と現地生の両方で同じ相手を見つける", async ({
@@ -234,7 +234,7 @@ test("実API：同意したプロ相談を保存し、宛先の事業者へ開�
     "接続した相談フォーム",
   );
   const provider = await (
-    await request.get("/api/bootstrap", {
+    await request.get("/api/agent/consultations", {
       headers: { Cookie: "machi_session=e2e-uip" },
     })
   ).json();
@@ -527,4 +527,87 @@ test("実API：居住地域と過去の留学を保存し、経験のある相�
     .getByRole("button", { name: "メッセージを送信", exact: true })
     .click();
   await expect(page.locator(".message.own")).toContainText("台北に留学");
+});
+test("実API：エージェントが掲載情報を編集し、受け取った相談に返信する", async ({
+  page,
+  context,
+  request,
+}) => {
+  expect(
+    (
+      await request.post("http://127.0.0.1:8787/api/consultations", {
+        headers: {
+          Origin: "http://127.0.0.1:5173",
+          Cookie: "machi_session=e2e-ui",
+        },
+        data: {
+          title: "エージェント画面の確認",
+          provider: "e2e-uip",
+          budget: "まだ決めていない",
+          date: "2099-01-10",
+          body: "アイルランドの語学留学について相談したいです。",
+          shareMessageIds: ["e2e-ui-m"],
+          consent: true,
+        },
+      })
+    ).status(),
+  ).toBe(201);
+  await context.addCookies([
+    { name: "machi_session", value: "e2e-uip", domain: "127.0.0.1", path: "/" },
+  ]);
+  await page.goto("/");
+  await expect(page.getByRole("heading", { level: 1 })).toBeVisible();
+  const menu = page.getByRole("navigation", { name: "メインナビゲーション" });
+  await expect(
+    menu.getByRole("link", { name: "受け取った相談" }),
+  ).toBeVisible();
+  await expect(menu.getByRole("link", { name: "話せる人" })).toHaveCount(0);
+  expect(await undersizedControls(page)).toEqual([]);
+
+  await page.goto("/agent/profile");
+  await page
+    .getByLabel("所属（会社・団体名）")
+    .fill("実接続テスト留学センター");
+  await page
+    .getByLabel("キャッチコピー")
+    .fill("説明会と資料を見てから相談できます");
+  await page.getByLabel("対応している国・地域").fill("カナダ、アイルランド");
+  await page.getByRole("checkbox", { name: "語学留学" }).check();
+  await page.getByRole("button", { name: "説明会を追加" }).click();
+  await page.getByLabel("説明会名").fill("アイルランド留学説明会");
+  await page.getByLabel("開催日").fill("2099-02-01");
+  await page.getByRole("button", { name: "資料を追加" }).click();
+  await page.getByLabel("資料名").fill("説明会スライド");
+  await page
+    .locator("#edit-materials")
+    .getByLabel("URL")
+    .fill("https://example.com/slides.pdf");
+  await page.getByLabel("公式サイト").fill("https://example.com/");
+  expect(await undersizedControls(page)).toEqual([]);
+  await page.getByRole("button", { name: "保存する" }).click();
+  await expect(page.getByText("掲載情報を保存しました")).toBeVisible();
+
+  await page.goto("/agents/e2e-uip");
+  await expect(
+    page.getByRole("heading", { name: "実接続テスト留学センター" }),
+  ).toBeVisible();
+  await expect(page.getByText("アイルランド留学説明会")).toBeVisible();
+  await expect(
+    page.getByRole("link", { name: /説明会スライド/ }),
+  ).toHaveAttribute("href", "https://example.com/slides.pdf");
+  expect(await undersizedControls(page)).toEqual([]);
+
+  await page.goto("/agent/consultations");
+  await page
+    .getByRole("link", { name: /エージェント画面の確認/ })
+    .first()
+    .click();
+  await expect(page.getByText("共有範囲を選べる自分の投稿です")).toBeVisible();
+  await page.getByLabel("返信").fill("ご相談ありがとうございます。");
+  await page.getByRole("button", { name: "送信する" }).click();
+  await expect(page.locator(".agent-messages")).toContainText(
+    "ご相談ありがとうございます。",
+  );
+  await expect(page.locator(".session-badge").first()).toHaveText("対応中");
+  expect(await undersizedControls(page)).toEqual([]);
 });

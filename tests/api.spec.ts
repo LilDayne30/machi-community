@@ -290,17 +290,182 @@ test("相談は明示同意と自分の投稿だけを共有", async ({ request 
 });
 test("無関係な事業者・他の会員には相談を開示しない", async ({ request }) => {
   const pa = await (
-    await request.get("/api/bootstrap", { headers: auth("pa") })
+    await request.get("/api/agent/consultations", { headers: auth("pa") })
   ).json();
   expect(pa.consultations).toHaveLength(1);
-  expect(JSON.stringify(pa.consultations)).toContain("共有してよい自分の投稿");
+  expect(pa.consultations[0].sender).toBe("参加者A");
+  const id = pa.consultations[0].id;
+  const detail = await (
+    await request.get("/api/consultations/" + id, { headers: auth("pa") })
+  ).json();
+  expect(JSON.stringify(detail.consultation.shared)).toContain(
+    "共有してよい自分の投稿",
+  );
+  expect(JSON.stringify(detail)).not.toContain("@");
+  const pb = await (
+    await request.get("/api/agent/consultations", { headers: auth("pb") })
+  ).json();
+  expect(pb.consultations).toHaveLength(0);
   for (const u of ["pb", "b"]) {
+    expect(
+      (
+        await request.get("/api/consultations/" + id, { headers: auth(u) })
+      ).status(),
+    ).toBe(404);
     const b = await (
       await request.get("/api/bootstrap", { headers: auth(u) })
     ).json();
     expect(b.consultations).toHaveLength(0);
     expect(JSON.stringify(b)).not.toContain("相談APIのテスト");
   }
+  // 会員はエージェント用の画面を使えない。
+  expect(
+    (
+      await request.get("/api/agent/consultations", { headers: auth("a") })
+    ).status(),
+  ).toBe(403);
+});
+test("エージェント：返信で対応中になり、相談者とだけやり取りできる", async ({
+  request,
+}) => {
+  const id = (
+    await (
+      await request.get("/api/agent/consultations", { headers: auth("pa") })
+    ).json()
+  ).consultations[0].id;
+  const send = (u: string, body: string) =>
+    request.post(`/api/consultations/${id}/messages`, {
+      headers: auth(u),
+      data: { body },
+    });
+  expect((await send("pb", "横から失礼します")).status()).toBe(404);
+  expect((await send("pa", "ご相談ありがとうございます")).status()).toBe(201);
+  expect((await send("a", "よろしくお願いします")).status()).toBe(201);
+  const seen = await (
+    await request.get("/api/consultations/" + id, { headers: auth("a") })
+  ).json();
+  expect(seen.consultation.status).toBe("accepted");
+  expect(seen.consultation.role).toBe("client");
+  expect(seen.consultation.messages.map((m: any) => m.fromAgent)).toEqual([
+    true,
+    false,
+  ]);
+  // 相談者は状態を変えられない。エージェントは変えられる。
+  expect(
+    (
+      await request.patch("/api/agent/consultations/" + id, {
+        headers: auth("a"),
+        data: { status: "completed" },
+      })
+    ).status(),
+  ).toBe(403);
+  expect(
+    (
+      await request.patch("/api/agent/consultations/" + id, {
+        headers: auth("pb"),
+        data: { status: "completed" },
+      })
+    ).status(),
+  ).toBe(404);
+  expect(
+    (
+      await request.patch("/api/agent/consultations/" + id, {
+        headers: auth("pa"),
+        data: { status: "completed" },
+      })
+    ).status(),
+  ).toBe(200);
+  expect((await send("a", "終了後のメッセージ")).status()).toBe(409);
+});
+test("エージェント：自分には相談できず、一覧にも自分は出ない", async ({
+  request,
+}) => {
+  const pa = await (
+    await request.get("/api/bootstrap", { headers: auth("pa") })
+  ).json();
+  expect(pa.providers.some((p: any) => p.id === "e2e-pa")).toBe(false);
+  expect(pa.providers.some((p: any) => p.id === "e2e-pb")).toBe(true);
+  expect(
+    (
+      await request.post("/api/consultations", {
+        headers: auth("pa"),
+        data: { ...consultation, provider: "e2e-pa", shareMessageIds: [] },
+      })
+    ).status(),
+  ).toBe(403);
+  expect(
+    (
+      await request.post("/api/consultations", {
+        headers: auth("pa"),
+        data: { ...consultation, provider: "e2e-pb", shareMessageIds: [] },
+      })
+    ).status(),
+  ).toBe(403);
+});
+test("エージェント：URL・説明会・資料を含む掲載情報を保存して公開ページに出す", async ({
+  request,
+}) => {
+  const profile = {
+    name: "担当テスト",
+    organization: "テスト留学センター",
+    theme: "カナダの高校留学",
+    bio: "高校留学の相談を受け付けています。",
+    details: {
+      tagline: "出発から帰国まで",
+      countries: ["カナダ", "オーストラリア"],
+      programs: ["高校留学"],
+      feeType: "partial",
+      website: "https://example.com/",
+      links: [{ kind: "instagram", url: "https://example.com/ig", label: "" }],
+      seminars: [
+        {
+          title: "オンライン説明会",
+          date: "2099-01-18",
+          time: "14:00",
+          format: "online",
+          place: "Zoom",
+          url: "https://example.com/s",
+          note: "",
+        },
+      ],
+      materials: [
+        {
+          title: "説明会資料",
+          kind: "pdf",
+          url: "https://example.com/a.pdf",
+          note: "",
+        },
+      ],
+      faq: [{ q: "英語が苦手でも？", a: "大丈夫です。" }],
+    },
+  };
+  const put = (u: string, data: any) =>
+    request.put("/api/agent/me", { headers: auth(u), data });
+  expect((await put("a", profile)).status()).toBe(403);
+  expect(
+    (
+      await put("pb", {
+        ...profile,
+        details: { ...profile.details, website: "javascript:alert(1)" },
+      })
+    ).status(),
+  ).toBe(400);
+  expect((await put("pb", { ...profile, organization: "" })).status()).toBe(
+    400,
+  );
+  expect((await put("pb", profile)).status()).toBe(200);
+  const seen = await (
+    await request.get("/api/agents/e2e-pb", { headers: auth("a") })
+  ).json();
+  expect(seen.own).toBe(false);
+  expect(seen.agent.organization).toBe("テスト留学センター");
+  expect(seen.agent.details.materials[0].url).toBe("https://example.com/a.pdf");
+  expect(seen.agent.details.seminars[0].title).toBe("オンライン説明会");
+  expect(JSON.stringify(seen)).not.toContain("@");
+  const me = await (
+    await request.get("/api/agent/me", { headers: auth("pb") })
+  ).json();
+  expect(me.agent.details.countries).toEqual(["カナダ", "オーストラリア"]);
 });
 test("初回無料予約・二重申込み防止・他人の予約キャンセル拒否", async ({
   request,

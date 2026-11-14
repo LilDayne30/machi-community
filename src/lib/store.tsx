@@ -96,7 +96,8 @@ export function Provider({ children }: { children: ReactNode }) {
   async function refresh() {
     try {
       const b = await api<Bootstrap>("/bootstrap");
-      if (b.mode === "preview") {
+      // エージェントでログインしたときは、プレビューでも実データでエージェント用の画面を出す。
+      if (b.mode === "preview" && b.user?.role !== "provider") {
         const saved = localStorage.getItem("machi-preview-v1");
         if (saved) {
           try {

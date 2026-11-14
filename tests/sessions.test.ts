@@ -258,6 +258,7 @@ beforeEach(async () => {
     "0005_admin_operations",
     "0006_paid_sessions",
     "0007_provider_organization",
+    "0008_agent_pages",
   ])
     sql.exec(readFileSync(`migrations/${f}.sql`, "utf8"));
   await login();

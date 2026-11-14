@@ -11,6 +11,7 @@ for (const table of [
   "invitations",
   "costs",
   "reports",
+  "consultation_messages",
   "consultations",
   "activity",
   "blocks",
