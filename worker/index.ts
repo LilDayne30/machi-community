@@ -783,7 +783,7 @@ app.post("/api/conversations", async (c) => {
     throw new HTTPException(400, { message: "会話する相手を選んでください" });
   if (u.role === "provider")
     throw new HTTPException(403, {
-      message: "事業者への連絡はプロ相談から行います",
+      message: "留学エージェントへの連絡は「留学エージェントに相談」から行います",
     });
   const target = await db
     .prepare(

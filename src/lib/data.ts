@@ -2,7 +2,7 @@ import type { RegionConnection } from "./regions";
 import type { Participation } from "./participation";
 export type Person = {
   name: string;
-  role: "住んでいる" | "最近訪れた" | "事業者" | "進行役";
+  role: "住んでいる" | "最近訪れた" | "エージェント" | "進行役";
   color: string;
   initial: string;
   avatarUrl?: string;
