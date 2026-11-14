@@ -18,6 +18,7 @@ import {
 import { emptyProfile, type CommunityMember } from "../src/lib/data";
 import { MAX_AVATAR_BYTES } from "../src/lib/profile";
 import { readPhoto, validProfileJpeg } from "./photos";
+import { registerAgents, publicAgent, PUBLIC_AGENT_SQL } from "./agents";
 import {
   registerSessions,
   handleSessionPayment,
@@ -316,10 +317,13 @@ app.get("/api/bootstrap", async (c) => {
     relation: n.relation,
     avatarUrl: avatarUrl(n.author_id, n.photo_version),
   }));
+  // 自分自身（エージェント本人）は相談先の一覧に出さない。
   const ps = await db
     .prepare(
-      "SELECT p.id,p.name,p.organization,p.theme,p.bio,p.price FROM providers p JOIN users u ON u.id=p.user_id WHERE p.verified=1 AND u.account_status='active'",
+      PUBLIC_AGENT_SQL +
+        " WHERE p.verified=1 AND u.account_status='active' AND p.user_id!=? ORDER BY p.organization,p.name",
     )
+    .bind(u?.id || "")
     .all<any>();
   const advisors = u
     ? (
@@ -412,9 +416,9 @@ app.get("/api/bootstrap", async (c) => {
     consultations = (
       await db
         .prepare(
-          "SELECT id,title,provider_id provider,budget,desired_date date,body,shared_messages shared,status FROM consultations WHERE user_id=? OR provider_id IN(SELECT id FROM providers WHERE user_id=?) ORDER BY created_at DESC",
+          "SELECT id,title,provider_id provider,budget,desired_date date,body,shared_messages shared,status FROM consultations WHERE user_id=? ORDER BY created_at DESC",
         )
-        .bind(u.id, u.id)
+        .bind(u.id)
         .all<any>()
     ).results.map((r) => ({ ...r, shareMessageIds: parseJSON(r.shared, []) }));
   }
@@ -440,7 +444,7 @@ app.get("/api/bootstrap", async (c) => {
     advisors,
     bookings,
     consultations,
-    providers: ps.results,
+    providers: ps.results.map((p) => publicAgent(p, avatarUrl)),
     configured: {
       google: !!(c.env.GOOGLE_CLIENT_ID && c.env.GOOGLE_CLIENT_SECRET),
       stripe: !!c.env.STRIPE_SECRET_KEY,
@@ -783,7 +787,8 @@ app.post("/api/conversations", async (c) => {
     throw new HTTPException(400, { message: "会話する相手を選んでください" });
   if (u.role === "provider")
     throw new HTTPException(403, {
-      message: "留学エージェントへの連絡は「留学エージェントに相談」から行います",
+      message:
+        "留学エージェントへの連絡は「留学エージェントに相談」から行います",
     });
   const target = await db
     .prepare(
@@ -1191,13 +1196,17 @@ app.post("/api/consultations", async (c) => {
       }),
     );
   const provider = await c.env.DB.prepare(
-    "SELECT p.* FROM providers p JOIN users u ON u.id=p.user_id WHERE p.id=? AND p.verified=1 AND u.account_status='active'",
+    "SELECT p.*,u.email agent_email FROM providers p JOIN users u ON u.id=p.user_id WHERE p.id=? AND p.verified=1 AND u.account_status='active'",
   )
     .bind(p.provider)
     .first<any>();
   if (!provider)
     throw new HTTPException(400, {
       message: "確認済みの相談先を選んでください",
+    });
+  if (u.role === "provider" || provider.user_id === u.id)
+    throw new HTTPException(403, {
+      message: "エージェントのアカウントからは相談を送れません",
     });
   const recent = await c.env.DB.prepare(
     "SELECT count(*) n FROM consultations WHERE user_id=? AND created_at>datetime('now','-1 hour')",
@@ -1238,8 +1247,19 @@ app.post("/api/consultations", async (c) => {
       c.env.DB,
       "consult:" + id,
       u.email,
-      "Roamigo：プロへの相談を受け付けました",
-      "<p>運営が確認し、相談先との調整を進めます。</p>",
+      "Roamigo：留学エージェントへの相談を送りました",
+      "<p>エージェントからの返信は、Roamigoの「留学エージェントに相談」で確認できます。</p>",
+    ),
+    queue(
+      c.env.DB,
+      "consult-agent:" + id,
+      provider.agent_email,
+      "Roamigo：新しい相談が届きました",
+      "<p>「" +
+        safeText(p.title) +
+        '」という相談が届きました。</p><p><a href="' +
+        safeText(c.env.APP_ORIGIN + "/consultations/" + id) +
+        '">Roamigoで開く</a></p>',
     ),
   ]);
   return c.json({ id }, 201);
@@ -2070,6 +2090,15 @@ registerSessions(app, {
   now,
   safeText,
   sha256,
+});
+registerAgents(app, {
+  mustUser,
+  json,
+  queue,
+  audit,
+  uid,
+  safeText,
+  avatarUrl,
 });
 app.all("/api/*", (c) => c.json({ error: "APIが見つかりません" }, 404));
 app.all("*", (c) => c.env.ASSETS.fetch(c.req.raw));

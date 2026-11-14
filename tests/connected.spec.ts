@@ -234,7 +234,7 @@ test("実API：同意したプロ相談を保存し、宛先の事業者へ開�
     "接続した相談フォーム",
   );
   const provider = await (
-    await request.get("/api/bootstrap", {
+    await request.get("/api/agent/consultations", {
       headers: { Cookie: "machi_session=e2e-uip" },
     })
   ).json();

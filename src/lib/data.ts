@@ -1,3 +1,4 @@
+import { emptyAgentDetails, type PublicAgent } from "./agents";
 import type { RegionConnection } from "./regions";
 import type { Participation } from "./participation";
 export type Person = {
@@ -145,16 +146,7 @@ export type Bootstrap = {
   people: CommunityMember[];
   bookings: Booking[];
   consultations: Consultation[];
-  providers?: {
-    id: string;
-    name: string;
-    theme: string;
-    bio: string;
-    price: string;
-    organization?: string;
-    initial?: string;
-    color?: string;
-  }[];
+  providers?: PublicAgent[];
   advisors?: PublicAdvisor[];
   configured: { google: boolean; stripe: boolean };
 };
@@ -522,7 +514,8 @@ export const emptyProfile: Profile = {
   availability: "土日の夜",
   acceptsMessages: false,
 };
-export const providers = [
+// 見本のエージェント（プレビュー表示用）。実在の会社ではありません。
+export const providers: PublicAgent[] = [
   {
     id: "p1",
     name: "高橋 まどか",
@@ -530,8 +523,83 @@ export const providers = [
     initial: "サ",
     theme: "カナダ・オーストラリアの高校留学",
     bio: "高校留学の学校選び、ホームステイ、出発前の準備まで相談できます。",
-    price: "相談無料",
     color: "#e5dbce",
+    verified: true,
+    details: {
+      ...emptyAgentDetails,
+      tagline: "はじめての高校留学を、出発から帰国まで",
+      staffTitle: "留学カウンセラー",
+      staffMessage:
+        "自分もカナダの高校に1年留学しました。保護者の方からのご相談も歓迎です。",
+      countries: ["カナダ", "オーストラリア", "ニュージーランド"],
+      programs: ["高校留学", "短期・夏休み留学", "親子留学"],
+      audiences: ["小中学生", "高校生", "親子"],
+      services: [
+        "国・学校選び",
+        "出願手続き",
+        "ビザ申請のサポート",
+        "滞在先の手配",
+        "空港出迎え",
+        "緊急時の対応",
+      ],
+      feeType: "partial",
+      feeNote: "相談と学校紹介は無料。出願代行は1校あたり3万円（見本）。",
+      methods: ["オンライン", "対面", "LINE"],
+      hours: "平日 10:00〜19:00／土曜 10:00〜17:00",
+      responseTime: "1営業日以内",
+      languages: "日本語・英語",
+      offices: [
+        { name: "東京オフィス（見本）", address: "東京都千代田区（見本）" },
+        { name: "バンクーバー現地デスク", address: "カナダ・バンクーバー" },
+      ],
+      localSupport:
+        "バンクーバーに日本人スタッフが常駐し、24時間の緊急連絡に対応します。",
+      founded: "2010年",
+      track: "これまでに高校留学で約800名をサポート（見本）",
+      memberships: "（見本）留学事業者の業界団体に加盟",
+      license: "",
+      website: "https://example.com/",
+      links: [
+        { kind: "instagram", url: "https://example.com/instagram", label: "" },
+        {
+          kind: "youtube",
+          url: "https://example.com/youtube",
+          label: "留学体験談チャンネル",
+        },
+        { kind: "line", url: "https://example.com/line", label: "" },
+      ],
+      seminars: [
+        {
+          title: "カナダ高校留学 オンライン説明会",
+          date: "2099-01-18",
+          time: "14:00〜15:00",
+          format: "online",
+          place: "Zoom",
+          url: "https://example.com/seminar",
+          note: "保護者の方のみの参加も歓迎です。",
+        },
+      ],
+      materials: [
+        {
+          title: "高校留学ガイドブック（見本）",
+          kind: "pdf",
+          url: "https://example.com/guide.pdf",
+          note: "費用の目安と出発までの流れ",
+        },
+        {
+          title: "説明会スライド（見本）",
+          kind: "slide",
+          url: "https://example.com/slides",
+          note: "",
+        },
+      ],
+      faq: [
+        {
+          q: "英語が苦手でも行けますか？",
+          a: "現地の語学コースから始められる学校もあります。今の英語力に合わせてご提案します。",
+        },
+      ],
+    },
   },
   {
     id: "p2",
@@ -540,8 +608,14 @@ export const providers = [
     initial: "見",
     theme: "アメリカ・イギリスの大学進学",
     bio: "出願書類、英語試験、奨学金の探し方を相談できます。",
-    price: "相談無料",
     color: "#dce4d9",
+    verified: true,
+    details: {
+      ...emptyAgentDetails,
+      countries: ["アメリカ", "イギリス"],
+      programs: ["大学・大学院（正規留学）"],
+      methods: ["オンライン"],
+    },
   },
 ];
 export const dateLabel = (date: string) =>

@@ -27,6 +27,17 @@ import {
   EventDetailPage as TalkDetail,
 } from "./components/events";
 import { Home } from "./components/home";
+import { CONSULT_STATUS_USER } from "./lib/agents";
+import {
+  AgentCardSummary,
+  AgentHome,
+  AgentInbox,
+  AgentOnlyNotice,
+  AgentPage,
+  AgentProfileEdit,
+  ConsultationThread,
+  isAgent,
+} from "./components/agents";
 import {
   AdvisorApply,
   AdvisorBadge,
@@ -130,6 +141,13 @@ const nav = [
   { to: "/consult", label: "留学エージェントに相談", icon: Compass },
   { to: "/profile", label: "プロフィール", icon: Settings2 },
 ];
+// 留学エージェントのアカウントで表示するメニュー。
+const agentNav = [
+  { to: "/", label: "ホーム", icon: HomeIcon },
+  { to: "/agent/consultations", label: "受け取った相談", icon: MessageCircle },
+  { to: "/agent/profile", label: "掲載情報の編集", icon: Compass },
+  { to: "/profile", label: "アカウント", icon: Settings2 },
+];
 export default function App() {
   const effectsRef = useGlassEffects();
   const { data, loading, error, notify, notifyAction } = useApp(),
@@ -137,9 +155,11 @@ export default function App() {
     [transition, setTransition] = useState(false),
     [notifications, setNotifications] = useState(false),
     [help, setHelp] = useState(false);
+  const agent = isAgent(data.user?.role),
+    menu = agent ? agentNav : nav;
   const pageTitle =
     [
-      ...nav.filter((n) => n.to !== "/"),
+      ...menu.filter((n) => n.to !== "/"),
       { to: "/talks", label: "イベント" },
       { to: "/notes", label: "現地のメモ" },
       { to: "/admin", label: "運営管理" },
@@ -169,18 +189,20 @@ export default function App() {
             Roamigo<span className="brand-dot">.</span>
           </span>
         </Link>
-        <Link to="/people" className="sidebar-region">
-          <span className="region-icon">
-            <MapPin size={18} />
-          </span>
-          <div>
-            <strong>話せる人</strong>
-            <small>国・地域から探す</small>
-          </div>
-          <ArrowUpRight size={15} />
-        </Link>
+        {!agent && (
+          <Link to="/people" className="sidebar-region">
+            <span className="region-icon">
+              <MapPin size={18} />
+            </span>
+            <div>
+              <strong>話せる人</strong>
+              <small>国・地域から探す</small>
+            </div>
+            <ArrowUpRight size={15} />
+          </Link>
+        )}
         <nav aria-label="メインナビゲーション">
-          {nav.map((n) => (
+          {menu.map((n) => (
             <NavLink
               end={n.to === "/"}
               key={n.to}
@@ -322,7 +344,14 @@ export default function App() {
                 transition={{ duration: 0.36, ease: [0.16, 1, 0.3, 1] }}
               >
                 <Routes>
-                  <Route path="/" element={<Home />} />
+                  <Route path="/" element={agent ? <AgentHome /> : <Home />} />
+                  <Route path="/agent/consultations" element={<AgentInbox />} />
+                  <Route path="/agent/profile" element={<AgentProfileEdit />} />
+                  <Route path="/agents/:id" element={<AgentPage />} />
+                  <Route
+                    path="/consultations/:id"
+                    element={<ConsultationThread />}
+                  />
                   <Route path="/talks" element={<Talks />} />
                   <Route path="/talks/:id" element={<TalkDetail />} />
                   <Route path="/rooms" element={<Rooms />} />
@@ -374,7 +403,7 @@ export default function App() {
         </main>
       </div>
       <nav className="bottom-nav glass" aria-label="モバイルナビゲーション">
-        {nav.map((n) => (
+        {menu.map((n) => (
           <NavLink
             key={n.to}
             end={n.to === "/"}
@@ -581,6 +610,8 @@ function ConversationButton({
   const { startConversation, toast, data } = useApp(),
     navigate = useNavigate(),
     [busy, setBusy] = useState(false);
+  // エージェントは利用者へ直接メッセージを送れない（相談への返信で連絡する）。
+  if (isAgent(data.user?.role)) return null;
   return (
     <button
       className="button primary"
@@ -1944,7 +1975,8 @@ function NoteDetail() {
 }
 function Consult() {
   const { data, setData, toast, guard } = useApp(),
-    [selected, setSelected] = useState(""),
+    [params] = useSearchParams(),
+    [selected, setSelected] = useState(params.get("agent") || ""),
     [title, setTitle] = useState(""),
     [body, setBody] = useState(""),
     [budget, setBudget] = useState(""),
@@ -1980,7 +2012,7 @@ function Consult() {
         shareMessageIds: shares,
         status: "submitted",
       };
-      if (data.mode === "production") {
+      if (data.user) {
         await api("/consultations", {
           method: "POST",
           body: JSON.stringify({ ...c, consent }),
@@ -2014,6 +2046,7 @@ function Consult() {
           相談は無料です。あなたが依頼したときだけ、選んだエージェントに相談が届きます。
         </p>
       </div>
+      {isAgent(data.user?.role) && <AgentOnlyNotice />}
       {data.mode === "production" && !data.providers?.length && (
         <Empty>相談を受付中のエージェントはいません</Empty>
       )}
@@ -2021,27 +2054,33 @@ function Consult() {
         className="providers-grid"
         aria-label="相談できる留学エージェント"
       >
-        {(data.mode === "preview" ? providers : data.providers || []).map(
-          (p) => (
-            <div className="provider-card glass" key={p.id}>
-              <div className="provider-head">
-                <Avatar name={p.initial || p.name} color={p.color} />
-                <div>
-                  <h2>{p.organization || p.name}</h2>
-                  {p.organization && (
-                    <p className="provider-affiliation">担当：{p.name}</p>
-                  )}
-                  <span className="provider-badge">
-                    <ShieldCheck size={12} />
-                    確認済みエージェント
-                  </span>
-                </div>
+        {(data.mode === "preview" && !data.user
+          ? providers
+          : data.providers || []
+        ).map((p) => (
+          <div className="provider-card glass" key={p.id}>
+            <div className="provider-head">
+              <Avatar
+                name={p.initial || p.organization || p.name}
+                color={p.color}
+                src={p.avatarUrl}
+              />
+              <div>
+                <h2>{p.organization || p.name}</h2>
+                {p.organization && (
+                  <p className="provider-affiliation">担当：{p.name}</p>
+                )}
+                <span className="provider-badge">
+                  <ShieldCheck size={12} />
+                  確認済みエージェント
+                </span>
               </div>
-              <div className="tags">
-                <span>{p.theme}</span>
-              </div>
-              <p>{p.bio}</p>
-              <div className="provider-price">相談無料</div>
+            </div>
+            <p className="agent-theme">{p.theme}</p>
+            <p>{p.bio.length > 120 ? p.bio.slice(0, 120) + "…" : p.bio}</p>
+            <AgentCardSummary agent={p} />
+            <div className="provider-price">相談無料</div>
+            {!isAgent(data.user?.role) && (
               <button
                 className={
                   "button full " + (selected === p.id ? "primary" : "subtle")
@@ -2070,11 +2109,11 @@ function Consult() {
                   </>
                 )}
               </button>
-            </div>
-          ),
-        )}
+            )}
+          </div>
+        ))}
       </section>
-      {selected && (
+      {selected && !isAgent(data.user?.role) && (
         <form
           className="consult-form glass"
           onSubmit={submit}
@@ -2095,10 +2134,10 @@ function Consult() {
             相談先
             <input
               value={
-                (data.mode === "preview"
+                (data.mode === "preview" && !data.user
                   ? providers
                   : data.providers || []
-                ).find((p) => p.id === selected)?.name
+                ).find((p) => p.id === selected)?.organization || ""
               }
               readOnly
             />
@@ -2198,47 +2237,57 @@ function Consult() {
           </button>
         </form>
       )}
-      <section className="booking-section">
-        <SectionTitle title="送信した相談" />
-        {data.consultations.length ? (
-          data.consultations.map((c) => (
-            <div className="consultation-row glass" key={c.id}>
-              <Compass size={20} />
-              <div>
-                <strong>{c.title}</strong>
-                <p>
-                  {
-                    (data.mode === "preview"
-                      ? providers
-                      : data.providers || []
-                    ).find((p) => p.id === c.provider)?.name
-                  }{" "}
-                  · {c.budget} · {c.date}
-                </p>
-              </div>
-              <span className="pill">
-                {
-                  {
-                    submitted: "送信済み",
-                    accepted: "受諾",
-                    completed: "相談完了",
-                    cancelled: "取消",
-                  }[c.status]
-                }
-              </span>
-            </div>
-          ))
-        ) : (
-          <Empty>送信した相談はありません</Empty>
-        )}
-      </section>
+      {!isAgent(data.user?.role) && (
+        <section className="booking-section">
+          <SectionTitle title="送信した相談" />
+          {data.consultations.length ? (
+            data.consultations.map((c) => {
+              const p = (
+                data.mode === "preview" && !data.user
+                  ? providers
+                  : data.providers || []
+              ).find((p) => p.id === c.provider);
+              const inner = (
+                <>
+                  <Compass size={20} />
+                  <div>
+                    <strong>{c.title}</strong>
+                    <p>
+                      {p ? p.organization || p.name : "エージェント"} ·{" "}
+                      {c.budget} · {c.date}
+                    </p>
+                  </div>
+                  <span className="pill">
+                    {CONSULT_STATUS_USER[c.status] || c.status}
+                  </span>
+                </>
+              );
+              return data.user ? (
+                <Link
+                  to={"/consultations/" + c.id}
+                  className="consultation-row glass"
+                  key={c.id}
+                >
+                  {inner}
+                </Link>
+              ) : (
+                <div className="consultation-row glass" key={c.id}>
+                  {inner}
+                </div>
+              );
+            })
+          ) : (
+            <Empty>送信した相談はありません</Empty>
+          )}
+        </section>
+      )}
       {success && (
         <Modal title="相談を受け付けました" onClose={() => setSuccess(false)}>
           <div className="success-icon">
             <Check size={28} />
           </div>
           <p className="prose">
-            {data.mode === "preview"
+            {data.mode === "preview" && !data.user
               ? "端末内のプレビューとして保存しました。エージェントへは送信されていません。"
               : "運営が内容を確認し、エージェントとの日程調整を進めます。"}
           </p>
