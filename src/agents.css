@@ -128,8 +128,13 @@
 .agent-seminar-date {
   min-width: 96px;
 }
-.agent-page a,
-.agent-section a:not(.button) {
+.agent-page a:not(.button),
+.agent-section a:not(.button),
+.agent-inline-link {
+  display: inline-flex;
+  align-items: center;
+  min-height: 44px;
+  min-width: 44px;
   color: var(--green);
   overflow-wrap: anywhere;
 }
@@ -150,7 +155,7 @@
   display: flex;
   align-items: center;
   gap: 6px;
-  min-height: 32px;
+  min-height: 44px;
 }
 .agent-quote {
   margin: 0;
@@ -175,7 +180,7 @@
 .agent-faq summary {
   cursor: pointer;
   font-weight: 600;
-  min-height: 32px;
+  min-height: 44px;
   display: flex;
   align-items: center;
 }
@@ -202,7 +207,7 @@
   display: inline-flex;
   align-items: center;
   gap: 4px;
-  min-height: 32px;
+  min-height: 44px;
   color: var(--green);
   font-weight: 600;
   font-size: 14px;
@@ -321,7 +326,7 @@
   display: inline-flex;
   align-items: center;
   gap: 6px;
-  min-height: 40px;
+  min-height: 44px;
   padding: 4px 12px;
   border: 1px solid var(--line);
   border-radius: 99px;

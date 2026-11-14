@@ -532,7 +532,10 @@ export function AgentHome() {
     );
   return (
     <>
-      <Heading eyebrow="AGENT" title={`${agent.organization}`}>
+      <Heading
+        eyebrow="AGENT"
+        title={(agent.organization || agent.name) + " さんのホーム"}
+      >
         <Link to={"/agents/" + agent.id} className="button subtle">
           <Eye size={16} />
           公開ページを見る
@@ -1611,7 +1614,9 @@ export function AgentOnlyNotice() {
       <Inbox size={20} />
       <p>
         エージェントのアカウントからは相談を送れません。届いた相談は
-        <Link to="/agent/consultations">受け取った相談</Link>
+        <Link to="/agent/consultations" className="agent-inline-link">
+          受け取った相談
+        </Link>
         から確認できます。
       </p>
     </div>

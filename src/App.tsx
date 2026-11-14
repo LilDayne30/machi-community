@@ -161,6 +161,8 @@ export default function App() {
     [
       ...menu.filter((n) => n.to !== "/"),
       { to: "/talks", label: "イベント" },
+      { to: "/consultations", label: "相談のやり取り" },
+      { to: "/agents", label: "エージェント紹介" },
       { to: "/notes", label: "現地のメモ" },
       { to: "/admin", label: "運営管理" },
     ].find((n) => location.pathname.startsWith(n.to))?.label || "ホーム";
