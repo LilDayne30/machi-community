@@ -28,6 +28,7 @@ import {
   type EventPlan,
 } from "../lib/events";
 import { useApp } from "../lib/store";
+import { localExchangeEnabled } from "../lib/features";
 import { Empty, Heading, SectionTitle } from "./ui";
 
 const savedKey = "roamigo-saved-events";
@@ -217,7 +218,7 @@ export function EventsPage() {
           .filter((t) => !eventPlans.some((e) => e.id === t.id))
           .map(eventFromTalk)
       : []),
-  ];
+  ].filter((e) => localExchangeEnabled || e.axis === "alumni");
   const events = catalogue.filter(
     (e) =>
       matchesEvent(e, axis, format, query) &&
@@ -243,11 +244,17 @@ export function EventsPage() {
           <Ticket size={24} strokeWidth={1.5} />
         </span>
         <div>
-          <strong>留学相談と、現地での交流</strong>
+          <strong>
+            {localExchangeEnabled ? "留学相談と、現地での交流" : "留学相談"}
+          </strong>
           <p>企画サンプルを掲載しています。申込受付は準備中です。</p>
         </div>
         <span className="event-intro-count">
-          {String(eventPlans.length).padStart(2, "0")}
+          {String(
+            eventPlans.filter(
+              (e) => localExchangeEnabled || e.axis === "alumni",
+            ).length,
+          ).padStart(2, "0")}
           <span>PLANS</span>
         </span>
       </div>
@@ -260,7 +267,7 @@ export function EventsPage() {
           {[
             ["", "すべて"],
             ["alumni", "留学相談"],
-            ["local", "現地交流"],
+            ...(localExchangeEnabled ? [["local", "現地交流"]] : []),
           ].map(([value, label]) => (
             <button
               type="button"

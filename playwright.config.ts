@@ -108,7 +108,7 @@ export default defineConfig({
       timeout: 90000,
     },
     {
-      command: "npm run dev",
+      command: "VITE_LOCAL_EXCHANGE=1 npm run dev",
       url: "http://127.0.0.1:5173",
       reuseExistingServer: false,
       timeout: 90000,

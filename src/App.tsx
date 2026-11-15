@@ -101,6 +101,7 @@ import {
   saveProfile,
   useApp,
 } from "./lib/store";
+import { localExchangeEnabled } from "./lib/features";
 import { matchesMember, normalizePlace, parseRegions } from "./lib/profile";
 import { photoDataUrl, prepareProfilePhoto } from "./lib/photo";
 import {
@@ -191,7 +192,7 @@ export default function App() {
             Roamigo<span className="brand-dot">.</span>
           </span>
         </Link>
-        {!agent && (
+        {!agent && localExchangeEnabled && (
           <Link to="/people" className="sidebar-region">
             <span className="region-icon">
               <MapPin size={18} />
@@ -788,7 +789,7 @@ function Members() {
     [theme, setTheme] = useState("すべて"),
     [showFilters, setShowFilters] = useState(false),
     [params, setParams] = useSearchParams();
-  const axis = params.get("axis") || "",
+  const axis = localExchangeEnabled ? params.get("axis") || "" : "alumni",
     studyTopic = params.get("topic") || "",
     studyPlace = params.get("studyPlace") || "",
     localKind = params.get("localKind") || "",
@@ -843,14 +844,16 @@ function Members() {
           1対1の会話
         </span>
       </Heading>
-      <DiscoveryAxes
-        axis={axis}
-        onChange={(next) => {
-          setParams(next ? { axis: next } : {});
-          setQuery("");
-          setTheme("すべて");
-        }}
-      />
+      {localExchangeEnabled && (
+        <DiscoveryAxes
+          axis={axis}
+          onChange={(next) => {
+            setParams(next ? { axis: next } : {});
+            setQuery("");
+            setTheme("すべて");
+          }}
+        />
+      )}
       <div className="people-tools glass">
         <div className="people-query-row">
           <label className="field">
@@ -938,36 +941,40 @@ function Members() {
                     </select>
                   </label>
                 </div>
-                <div className="form-row discovery-filters residence-discovery">
-                  <label className="field">
-                    関わりのある地域
-                    <select
-                      value={place}
-                      onChange={(e) => filter("place", e.target.value)}
-                    >
-                      <option value="">すべての地域</option>
-                      {places.map((r) => (
-                        <option key={r.id} value={r.id}>
-                          {regionLabel(r.id)}
-                        </option>
-                      ))}
-                    </select>
-                  </label>
-                  <label className="field">
-                    地域との関わり
-                    <select
-                      value={status}
-                      onChange={(e) => filter("status", e.target.value)}
-                    >
-                      <option value="">すべての関わり</option>
-                      {Object.entries(residenceLabels).map(([value, label]) => (
-                        <option key={value} value={value}>
-                          {label}
-                        </option>
-                      ))}
-                    </select>
-                  </label>
-                </div>
+                {localExchangeEnabled && (
+                  <div className="form-row discovery-filters residence-discovery">
+                    <label className="field">
+                      関わりのある地域
+                      <select
+                        value={place}
+                        onChange={(e) => filter("place", e.target.value)}
+                      >
+                        <option value="">すべての地域</option>
+                        {places.map((r) => (
+                          <option key={r.id} value={r.id}>
+                            {regionLabel(r.id)}
+                          </option>
+                        ))}
+                      </select>
+                    </label>
+                    <label className="field">
+                      地域との関わり
+                      <select
+                        value={status}
+                        onChange={(e) => filter("status", e.target.value)}
+                      >
+                        <option value="">すべての関わり</option>
+                        {Object.entries(residenceLabels).map(
+                          ([value, label]) => (
+                            <option key={value} value={value}>
+                              {label}
+                            </option>
+                          ),
+                        )}
+                      </select>
+                    </label>
+                  </div>
+                )}
               </motion.div>
             )}
           </AnimatePresence>

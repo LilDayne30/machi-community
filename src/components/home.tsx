@@ -18,6 +18,7 @@ import {
   participationOf,
   studyLevels,
 } from "../lib/participation";
+import { localExchangeEnabled } from "../lib/features";
 import { Avatar, Heading } from "./ui";
 import { SessionNotice } from "./sessions";
 import { GoogleLogin } from "./login";
@@ -25,7 +26,8 @@ import { GoogleLogin } from "./login";
 export function Home() {
   const { data } = useApp();
   const [params, setParams] = useSearchParams();
-  const axis = params.get("axis") === "local" ? "local" : "alumni";
+  const axis =
+    localExchangeEnabled && params.get("axis") === "local" ? "local" : "alumni";
   const people = data.people
     .filter((person) => matchesParticipation(person, axis))
     .slice(0, 2);
@@ -44,7 +46,9 @@ export function Home() {
       {!data.user && (
         <section className="home-welcome glass" aria-label="Roamigoについて">
           <p className="home-welcome-lead">
-            留学を考える家族と、留学経験者・現地の人をつなぐ招待制の相談の場です。
+            {localExchangeEnabled
+              ? "留学を考える家族と、留学経験者・現地の人をつなぐ招待制の相談の場です。"
+              : "留学を考える家族と、留学経験者をつなぐ招待制の相談の場です。"}
           </p>
           <div className="home-welcome-login">
             <GoogleLogin available={data.configured.google} />
@@ -70,7 +74,9 @@ export function Home() {
           <div className="home-intents" role="group" aria-label="話す目的">
             {[
               { id: "alumni", label: "留学経験者に相談", Icon: GraduationCap },
-              { id: "local", label: "現地の人と交流", Icon: Globe2 },
+              ...(localExchangeEnabled
+                ? [{ id: "local", label: "現地の人と交流", Icon: Globe2 }]
+                : []),
             ].map(({ id, label, Icon }) => (
               <button
                 type="button"
