@@ -13,6 +13,7 @@ import { Link } from "react-router-dom";
 import { RegionPicker } from "./regions";
 import { CheckChip } from "./ui";
 import { getRegion, regionLabel } from "../lib/regions";
+import { localExchangeEnabled } from "../lib/features";
 import {
   emptyParticipation,
   experienceLabel,
@@ -75,39 +76,41 @@ export function ParticipationEditor({
         role="group"
         aria-label="参加する立場"
       >
-        {Object.entries(participationRoles).map(([role, label]) => {
-          const selected = p.roles.includes(
-            role as keyof typeof participationRoles,
-          );
-          const Icon =
-            role === "explorer"
-              ? BookOpen
-              : role === "alumni"
-                ? GraduationCap
-                : Globe2;
-          return (
-            <label
-              key={role}
-              className={`participation-role ${selected ? "selected" : ""}`}
-            >
-              <input
-                type="checkbox"
-                checked={selected}
-                onChange={() =>
-                  onChange({
-                    ...p,
-                    roles: selected
-                      ? p.roles.filter((r) => r !== role)
-                      : [...p.roles, role as keyof typeof participationRoles],
-                  })
-                }
-              />
-              <Icon size={21} />
-              <span>{label}</span>
-              {selected && <Check size={16} aria-hidden="true" />}
-            </label>
-          );
-        })}
+        {Object.entries(participationRoles)
+          .filter(([role]) => localExchangeEnabled || role !== "local")
+          .map(([role, label]) => {
+            const selected = p.roles.includes(
+              role as keyof typeof participationRoles,
+            );
+            const Icon =
+              role === "explorer"
+                ? BookOpen
+                : role === "alumni"
+                  ? GraduationCap
+                  : Globe2;
+            return (
+              <label
+                key={role}
+                className={`participation-role ${selected ? "selected" : ""}`}
+              >
+                <input
+                  type="checkbox"
+                  checked={selected}
+                  onChange={() =>
+                    onChange({
+                      ...p,
+                      roles: selected
+                        ? p.roles.filter((r) => r !== role)
+                        : [...p.roles, role as keyof typeof participationRoles],
+                    })
+                  }
+                />
+                <Icon size={21} />
+                <span>{label}</span>
+                {selected && <Check size={16} aria-hidden="true" />}
+              </label>
+            );
+          })}
       </div>
       {p.roles.includes("explorer") && (
         <fieldset className="participation-fields">
@@ -365,7 +368,7 @@ export function ParticipationEditor({
           )}
         </fieldset>
       )}
-      {p.roles.includes("local") && (
+      {localExchangeEnabled && p.roles.includes("local") && (
         <fieldset className="participation-fields">
           <legend>現地で交流できる人</legend>
           <label className="field">
@@ -457,7 +460,7 @@ export function ParticipationSummary({
             留学経験者
           </span>
         )}
-        {p.roles.includes("local") && (
+        {localExchangeEnabled && p.roles.includes("local") && (
           <span>
             <Globe2 size={14} />
             {localKinds[p.local.kind]}
@@ -492,7 +495,7 @@ export function ParticipationSummary({
       {!compact && p.roles.includes("alumni") && (
         <small>留学経験は本人の申告です。</small>
       )}
-      {!compact && p.roles.includes("local") && (
+      {localExchangeEnabled && !compact && p.roles.includes("local") && (
         <section className="local-profile-detail">
           <h2>現地での交流</h2>
           <p>{regionLabel(localRegion) || "交流地域は未登録"}</p>
